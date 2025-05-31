@@ -4,7 +4,7 @@ set -v
 set -e
 set -u
 
-export DEB_BUILD_OPTIONS="nocheck noddebs parallel=1"
+export DEB_BUILD_OPTIONS="nocheck noddebs parallel=14"
 export DH_VERBOSE=1
 HOST_ARCH=undefined
 # select gcc version from gcc-defaults package unless set
@@ -229,6 +229,7 @@ obtain_source_package() {
 
 cat <<EOF >> /usr/share/dpkg/cputable
 csky		csky		csky		32	little
+riscv32		riscv32		riscv32		32	little
 EOF
 
 if test -z "$HOST_ARCH" || ! dpkg-architecture "-a$HOST_ARCH"; then
@@ -238,7 +239,7 @@ fi
 
 # ensure that the rebootstrap list comes first
 test -f /etc/apt/sources.list && mv -v /etc/apt/sources.list /etc/apt/sources.list.d/local.list
-grep -q '^deb-src .*sid' /etc/apt/sources.list.d/*.list || echo "deb-src $MIRROR sid main" >> /etc/apt/sources.list.d/sid-source.list
+grep -q '^deb-src .*trixie' /etc/apt/sources.list.d/*.list || echo "deb-src $MIRROR trixie main" >> /etc/apt/sources.list.d/trixie-source.list
 
 dpkg --add-architecture "$HOST_ARCH"
 $APT_GET update
@@ -306,7 +307,7 @@ Pin-Priority: 1002
 
 Explanation: do not use archive cross toolchain
 Package: *-$HOST_ARCH-cross *$HOST_ARCH_SUFFIX gcc-*$HOST_ARCH_SUFFIX-base
-Pin: release a=unstable
+Pin: release a=trixie
 Pin-Priority: -1
 EOF
 $APT_GET update
@@ -372,7 +373,7 @@ chdist_native() {
 
 if test "$ENABLE_DIFFOSCOPE" = yes; then
 	apt_get_install devscripts
-	chdist_native create "$MIRROR" sid main
+	chdist_native create "$MIRROR" trixie main
 	if ! chdist_native apt-get update; then
 		echo "rebootstrap-warning: not comparing packages to native builds"
 		rm -Rf /tmp/chdist_native
@@ -518,7 +519,7 @@ cross_build_setup() {
 # $2 is reason
 add_binNMU_changelog() {
 	cat - debian/changelog <<EOF |
-$(dpkg-parsechangelog -SSource) ($(dpkg-parsechangelog -SVersion)+b$1) sid; urgency=medium, binary-only=yes
+$(dpkg-parsechangelog -SSource) ($(dpkg-parsechangelog -SVersion)+b$1) trixie; urgency=medium, binary-only=yes
 
   * Binary-only non-maintainer upload for $HOST_ARCH; no source changes.
   * $2
@@ -713,7 +714,7 @@ EOF
 	echo "fix honouring of nocheck option #990794"
 	drop_privs sed -i -e 's/ifeq (\(,$(filter $(DEB_HOST_ARCH),\)/ifneq ($(DEB_BUILD_ARCH)\1/' debian/rules
 	case "$HOST_ARCH" in
-		loong64|sparc)
+		loong64|sparc|riscv32)
 			echo "enabling uncommon architectures in debian/control"
 			drop_privs sed -i -e "/^#NATIVE_ARCHS +=/aNATIVE_ARCHS += $HOST_ARCH" debian/rules
 			regenerate_control=1
@@ -831,6 +832,38 @@ buildenv_diffutils() {
 }
 
 add_automatic dpkg
+patch_dpkg() {
+	if test "$HOST_ARCH" = riscv32; then
+        	echo "patching dpkg to support riscv32"
+			echo "builtin pie for riscv32, need gcc support it."
+               	drop_privs patch -p1  <<'EOF'
+diff -uNr dpkg-1.22.19.orig/data/cputable dpkg-1.22.19/data/cputable
+--- dpkg-1.22.19.orig/data/cputable	2025-04-17 10:14:16.000000000 +0800
++++ dpkg-1.22.19/data/cputable	2025-05-31 15:18:05.886734153 +0800
+@@ -43,6 +43,7 @@
+ powerpcel	powerpcle	powerpcle		32	little
+ ppc64		powerpc64	(powerpc|ppc)64		64	big
+ ppc64el		powerpc64le	powerpc64le		64	little
++riscv32		riscv32		riscv32			32	little
+ riscv64		riscv64		riscv64			64	little
+ s390		s390		s390			32	big
+ s390x		s390x		s390x			64	big
+diff -uNr dpkg-1.22.19.orig/scripts/Dpkg/Vendor/Debian.pm dpkg-1.22.19/scripts/Dpkg/Vendor/Debian.pm
+--- dpkg-1.22.19.orig/scripts/Dpkg/Vendor/Debian.pm	2025-05-19 05:29:28.000000000 +0800
++++ dpkg-1.22.19/scripts/Dpkg/Vendor/Debian.pm	2025-05-31 15:19:13.097991422 +0800
+@@ -217,6 +217,7 @@
+         powerpc
+         ppc64
+         ppc64el
++        riscv32
+         riscv64
+         s390x
+         sparc
+
+EOF
+	fi
+}
+
 add_automatic e2fsprogs
 add_automatic expat
 add_automatic file
@@ -862,11 +895,30 @@ add_automatic fribidi
 add_automatic fuse3
 buildenv_fuse3() {
 	case "$(dpkg-architecture "-a$HOST_ARCH" -qDEB_HOST_ARCH_CPU)" in
-		arc|mips|mipsel|sh3|sh4|sparc)
+		arc|mips|mipsel|sh3|sh4|sparc|riscv32)
 			echo "enabling -latomic #1105150"
 			export DEB_LDFLAGS_APPEND="-Wl,--as-needed -latomic"
 		;;
 	esac
+}
+
+patch_fuse3() {
+	if test "$HOST_ARCH" = riscv32; then
+        	echo "patching fuse3 to support riscv32"
+               	drop_privs patch -p1  <<'EOF'
+diff -uNr fuse3-3.17.2.orig/debian/rules fuse3-3.17.2/debian/rules
+--- fuse3-3.17.2.orig/debian/rules	2025-02-22 14:44:45.000000000 +0800
++++ fuse3-3.17.2/debian/rules	2025-05-31 15:28:34.859758812 +0800
+@@ -10,7 +10,7 @@
+ 
+ export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+ 
+-ifneq (,$(filter $(DEB_HOST_ARCH), armel m68k powerpc))
++ifneq (,$(filter $(DEB_HOST_ARCH), armel m68k powerpc riscv32))
+    export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed -latomic
+ endif
+EOF
+	fi
 }
 
 patch_gcc_default_pie_everywhere()
@@ -2374,11 +2426,48 @@ patch_gcc_wdotap() {
 EOF
 	fi
 }
+
+patch_gcc_riscv32() {
+	test "$HOST_ARCH" = riscv32 || return 0
+	echo "riscv32 no multilib"
+	echo "riscv32 enable default pie"
+	drop_privs patch -p1 <<'EOF'
+diff -uNr gcc-14-14.2.0.orig/debian/rules2 gcc-14-14.2.0/debian/rules2
+--- gcc-14-14.2.0.orig/debian/rules2	2025-02-19 23:04:38.000000000 +0800
++++ gcc-14-14.2.0/debian/rules2	2025-05-31 02:19:19.639953313 +0800
+@@ -625,6 +625,11 @@
+   CONFARGS += --with-arch=rv64gc --with-abi=lp64d
+ endif
+ 
++ifneq (,$(findstring riscv32-linux,$(DEB_TARGET_GNU_TYPE)))
++  CONFARGS += --disable-multilib
++  CONFARGS += --with-arch=rv32gc --with-abi=ilp32d
++endif
++
+ ifneq (,$(findstring s390x-linux,$(DEB_TARGET_GNU_TYPE)))
+   ifeq ($(derivative),Ubuntu)
+     ifneq (,$(filter $(distrelease),xenial bionic focal))
+diff -uNr gcc-14-14.2.0.orig/debian/rules.defs gcc-14-14.2.0/debian/rules.defs
+--- gcc-14-14.2.0.orig/debian/rules.defs	2025-01-15 22:52:38.000000000 +0800
++++ gcc-14-14.2.0/debian/rules.defs	2025-05-31 15:23:29.539150802 +0800
+@@ -1431,7 +1431,7 @@
+ 		mips mipsel mips64 mips64el mipsn32 mipsn32el \
+ 		mipsr6 mipsr6el mips64r6 mips64r6el mipsn32r6 mipsn32r6el \
+ 		ppc64el s390x sparc sparc64 \
+-		hurd-amd64 hurd-i386 riscv64 loong64
++		hurd-amd64 hurd-i386 riscv64 loong64 riscv32
+   endif
+   ifeq (,$(filter $(distrelease), jessie stretch))
+     pie_archs += powerpc ppc64
+EOF
+}
+
 patch_gcc_14() {
 	patch_gcc_limits_h_test
 	patch_gcc_for_host_in_rtlibs
 	patch_gcc_default_pie_everywhere
 	patch_gcc_wdotap
+	patch_gcc_riscv32
 }
 buildenv_gcc_14() {
 	echo "ignoring symbol differences #1085155"
@@ -2544,6 +2633,9 @@ EOF
 
 add_automatic grep
 add_automatic groff
+buildenv_groff() {
+	export DEB_BUILD_OPTIONS="nocheck noddebs parallel=1"
+}
 
 add_automatic gzip
 buildenv_gzip() {
@@ -2577,6 +2669,10 @@ add_automatic libdebian-installer
 add_automatic libev
 add_automatic libevent
 add_automatic libffi
+patch_libffi() {
+	echo "fix symbols for riscv32"
+	drop_privs sed -i '/)LIBFFI_COMPLEX_8\.0 /s/)/ !riscv32)/' debian/libffi8.symbols
+}
 
 add_automatic libgc
 buildenv_libgc() {
@@ -2780,6 +2876,36 @@ EOF
 		echo "work around time64 abi duality build failure https://github.com/SELinuxProject/selinux/issues/476"
 		drop_privs sed -i -e '/^static_assert.*__ino_t/d' src/matchpathcon.c
 	fi
+
+	echo "for riscv32, patch to fix 32bit build"
+	# From: https://github.com/NixOS/nixpkgs/pull/391728
+	if test "$HOST_ARCH" = riscv32; then
+               	drop_privs patch -p1  <<'EOF'
+diff -uNr libselinux-3.8.1.orig/include/selinux/selinux.h libselinux-3.8.1/include/selinux/selinux.h
+--- libselinux-3.8.1.orig/include/selinux/selinux.h	2025-05-31 16:20:32.877431149 +0800
++++ libselinux-3.8.1/include/selinux/selinux.h	2025-05-31 16:20:48.349275139 +0800
+@@ -537,7 +537,7 @@
+    with the same inode (e.g. due to multiple hard links).  If so, then
+    use the latter of the two specifications based on their order in the 
+    file contexts configuration.  Return the used specification index. */
+-#if defined(_FILE_OFFSET_BITS) && _FILE_OFFSET_BITS == 64 && __BITS_PER_LONG < 64 && !defined(__x86_64__)
++#if defined(_FILE_OFFSET_BITS) && _FILE_OFFSET_BITS == 64 && !defined(__INO_T_MATCHES_INO64_T)
+ #define matchpathcon_filespec_add matchpathcon_filespec_add64
+ #endif
+ extern int matchpathcon_filespec_add(ino_t ino, int specind, const char *file);
+diff -uNr libselinux-3.8.1.orig/src/matchpathcon.c libselinux-3.8.1/src/matchpathcon.c
+--- libselinux-3.8.1.orig/src/matchpathcon.c	2025-05-31 16:20:32.877431149 +0800
++++ libselinux-3.8.1/src/matchpathcon.c	2025-05-31 16:20:48.349275139 +0800
+@@ -261,7 +261,7 @@
+ 	return -1;
+ }
+ 
+-#if defined(_FILE_OFFSET_BITS) && _FILE_OFFSET_BITS == 64 && __BITS_PER_LONG < 64 && !defined(__x86_64__)
++#if defined(_FILE_OFFSET_BITS) && _FILE_OFFSET_BITS == 64 && !defined(__INO_T_MATCHES_INO64_T)
+ /* alias defined in the public header but we undefine it here */
+ #undef matchpathcon_filespec_add
+EOF
+	fi
 }
 
 add_automatic libsepol
@@ -2835,6 +2961,28 @@ add_automatic libxau
 add_automatic libxaw
 add_automatic libxcb
 add_automatic libxcrypt
+patch_libxcrypt() {
+	echo "do not abuse Important and Protected fields #1024616"
+	drop_privs sed -i -e '/\(Important\|Protected\):/d' debian/control
+	if test "$HOST_ARCH" = riscv32; then
+        	echo "patching libxcrypt to support riscv32"
+               	drop_privs patch -p1  <<'EOF'
+--- /dev/null
++++ b/debian/libcrypt1.symbols.riscv32
+@@ -0,0 +1,10 @@
++libcrypt.so.1 libcrypt1 #MINVER#
++#include "libcrypt1.symbols.common"
++ GLIBC_2.33@GLIBC_2.33 1:4.4.38-1
++ crypt@GLIBC_2.33 1:4.4.38-1
++ crypt_r@GLIBC_2.33 1:4.4.38-1
++ encrypt@GLIBC_2.33 1:4.4.38-1
++ encrypt_r@GLIBC_2.33 1:4.4.38-1
++ fcrypt@GLIBC_2.33 1:4.4.38-1
++ setkey@GLIBC_2.33 1:4.4.38-1
++ setkey_r@GLIBC_2.33 1:4.4.38-1
+EOF
+	fi
+}
 add_automatic libxdmcp
 
 add_automatic libxext
@@ -2893,7 +3041,7 @@ patch_linux() {
 	local kernel_arch
 	kernel_arch=
 	cat - debian/changelog <<EOF |
-linux ($(dpkg-parsechangelog -SVersion)+rebootstrap1) sid; urgency=medium
+linux ($(dpkg-parsechangelog -SVersion)+rebootstrap1) trixie; urgency=medium
 
   * Update for $HOST_ARCH
 
@@ -2996,6 +3144,28 @@ patch_openldap() {
 }
 
 add_automatic openssl
+patch_openssl() {
+	if test "$HOST_ARCH" = riscv32; then
+		echo "patching openssl to support riscv32"
+		drop_privs patch -p1  <<'EOF'
+diff -uNr openssl-3.5.0.orig/Configurations/20-debian.conf openssl-3.5.0/Configurations/20-debian.conf
+--- openssl-3.5.0.orig/Configurations/20-debian.conf	2025-05-31 02:24:26.000000000 +0800
++++ openssl-3.5.0/Configurations/20-debian.conf	2025-05-31 02:25:32.255756238 +0800
+@@ -124,6 +124,9 @@
+ 	"debian-ppc64el" => {
+ 		inherit_from => [ "linux-ppc64le", "debian" ],
+ 	},
++	"debian-riscv32" => {
++		inherit_from => [ "linux-latomic", "debian" ],
++	},
+ 	"debian-riscv64" => {
+ 		inherit_from => [ "linux64-riscv64", "debian" ],
+ 	},
+
+EOF
+	fi
+}
+
 add_automatic p11-kit
 
 builddep_pam() {
@@ -3837,6 +4007,7 @@ mark_built unbound
 
 automatically_cross_build_packages
 
+# mark_built gmp
 assert_built "gmp libidn2 p11-kit libtasn1-6 unbound libunistring nettle"
 cross_build gnutls28 noguile gnutls28_1
 mark_built gnutls28
@@ -3871,6 +4042,7 @@ mark_built systemd
 
 automatically_cross_build_packages
 
+# mark_built attr
 assert_built attr
 cross_build libcap-ng nopython libcap-ng_1
 mark_built libcap-ng
@@ -3879,8 +4051,9 @@ mark_built libcap-ng
 automatically_cross_build_packages
 
 assert_built "gnutls28 libgcrypt20 libtool"
-cross_build libprelude "nolua noperl nopython noruby" libprelude_1
-mark_built libprelude
+# remove testing libprelude
+#cross_build libprelude "nolua noperl nopython noruby" libprelude_1
+#mark_built libprelude
 # needed by audit
 
 automatically_cross_build_packages
@@ -3898,6 +4071,7 @@ mark_built libxt
 
 automatically_cross_build_packages
 
+# mark_built libffi
 assert_built "elfutils libffi"
 dpkg-architecture "-a$HOST_ARCH" -ilinux-any && assert_built "util-linux libselinux"
 cross_build glib2.0 "nogir pkg.glib2.0.nosysprof" glib2.0_1
@@ -3912,7 +4086,8 @@ mark_built libverto
 
 automatically_cross_build_packages
 
-assert_built "libcap-ng krb5 openldap libprelude tcp-wrappers"
+#assert_built "libcap-ng krb5 openldap libprelude tcp-wrappers"
+assert_built "libcap-ng krb5 openldap tcp-wrappers"
 cross_build audit nopython audit_1
 mark_built audit
 # needed by libsemanage
