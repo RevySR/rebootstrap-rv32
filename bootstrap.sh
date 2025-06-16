@@ -3956,7 +3956,7 @@ mark_built unbound
 
 automatically_cross_build_packages
 
-assert_built "gmp libidn2 p11-kit libtasn1-6 unbound libunistring nettle"
+assert_built "libidn2 p11-kit libtasn1-6 unbound libunistring nettle"
 cross_build gnutls28 noguile gnutls28_1
 mark_built gnutls28
 # needed by libprelude, openldap, curl
