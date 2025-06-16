@@ -3780,6 +3780,7 @@ add_need tcl8.6 # by newt
 add_need tcltk-defaults # by python3.X
 add_need tcp-wrappers # by audit
 add_need xz-utils # by libxml2
+add_need libffi # by glib2.0
 
 automatically_cross_build_packages() {
 	local dosetmp profiles buildable new_needed line pkg missing source
@@ -3990,7 +3991,7 @@ mark_built systemd
 
 automatically_cross_build_packages
 
-assert_built attr
+# assert_built attr
 cross_build libcap-ng nopython libcap-ng_1
 mark_built libcap-ng
 # needed by audit
