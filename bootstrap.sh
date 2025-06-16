@@ -3995,12 +3995,12 @@ cross_build libcap-ng nopython libcap-ng_1
 mark_built libcap-ng
 # needed by audit
 
-automatically_cross_build_packages
+# automatically_cross_build_packages
 
-assert_built "gnutls28 libgcrypt20 libtool"
-cross_build libprelude "nolua noperl nopython noruby" libprelude_1
-mark_built libprelude
-# needed by audit
+# assert_built "gnutls28 libgcrypt20 libtool"
+# cross_build libprelude "nolua noperl nopython noruby" libprelude_1
+# mark_built libprelude
+# # needed by audit
 
 automatically_cross_build_packages
 
@@ -4031,7 +4031,7 @@ mark_built libverto
 
 automatically_cross_build_packages
 
-assert_built "libcap-ng krb5 openldap libprelude tcp-wrappers"
+assert_built "libcap-ng krb5 openldap tcp-wrappers"
 cross_build audit nopython audit_1
 mark_built audit
 # needed by libsemanage
