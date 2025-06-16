@@ -3781,6 +3781,13 @@ add_need tcltk-defaults # by python3.X
 add_need tcp-wrappers # by audit
 add_need xz-utils # by libxml2
 add_need libffi # by glib2.0
+add_need gcc-defaults # by build-essential
+
+buildenv_perl() {
+	export DEB_BUILD_OPTIONS="$DEB_BUILD_OPTIONS parallel=1"
+}
+
+add_need perl # by libdpkg-perl
 
 automatically_cross_build_packages() {
 	local dosetmp profiles buildable new_needed line pkg missing source
