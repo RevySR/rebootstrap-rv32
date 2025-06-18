@@ -490,6 +490,66 @@ pickup_packages() {
 	pickup_additional_packages "$@"
 }
 
+pickup_packages_with_addition() {
+	local sources
+	local source
+	local package
+	local packages
+	local f
+	local i
+	# collect package names referenced
+	sources=""
+	packages=""
+	for f in "$@"; do
+		if test "${f%.deb}" != "$f"; then
+			source=`dpkg-deb -f "$f" Source`
+			test -z "$source" && source=${f%%_*}
+			package="$(dpkg-deb -f "$f" Source)_$(dpkg-deb -f "$f" Package)_$(dpkg-deb -f "$f" Version)_$(dpkg-deb -f "$f" Architecture)"
+			packages="$(set_add "$packages" "$package")"
+		elif test "${f%.changes}" != "$f"; then
+			source=${f%%_*}
+			for i in $(sed --silent '/^Files:$/,$p;' "$f" | tail -n +2 | cut -d ' ' -f 6 | grep 'deb$'); do
+				package="$(dpkg-deb -f "$i" Source)_$(dpkg-deb -f "$i" Package)_$(dpkg-deb -f "$i" Version)_$(dpkg-deb -f "$i" Architecture)"
+				packages="$(set_add "$packages" "$package")"
+			done
+		else
+			echo "cannot pick up package $f"
+			exit 1
+		fi
+		sources=`set_add "$sources" "$source"`
+	done
+	# archive old contents
+	for package in $packages; do
+		local source="$(echo "$package" | cut -d '_' -f 1)"
+		local pkg_name="$(echo "$package" | cut -d '_' -f 2)"
+		local version="$(echo "$package" | cut -d '_' -f 3)"
+		local pkg_arch="$(echo "$package" | cut -d '_' -f 4)"
+		for f in $(reprepro --list-format '${Filename}\n' listfilter rebootstrap "Package (== $pkg_name), \$Version (== $version), \$Architecture (== $pkg_arch)"); do
+			mkdir -p "$REPODIR/archive/${source}_9999"
+			cp -v "$REPODIR/$f" "$REPODIR/archive/${source}_9999/"
+		done
+	done
+	for source in $sources; do
+		if test -e "$REPODIR/archive/${source}_9999"; then
+			i=1
+			while test -e "$REPODIR/archive/${source}_$i"; do
+				i=$((i + 1))
+			done
+			mv -v "$REPODIR/archive/${source}_9999" "$REPODIR/archive/${source}_$i"
+			find "$REPODIR/archive/${source}_$i" -type d -empty -delete
+		fi
+	done
+	# remove them from the repository
+	for package in $packages; do
+		local pkg_name="$(echo "$package" | cut -d '_' -f 2)"
+		local version="$(echo "$package" | cut -d '_' -f 3)"
+		local pkg_arch="$(echo "$package" | cut -d '_' -f 4)"
+		reprepro removefilter rebootstrap "Package (== $pkg_name), \$Version (== $version), \$Architecture (== $pkg_arch)"
+	done
+	# add new contents
+	pickup_additional_packages "$@"
+}
+
 # compute a function name from a hook prefix $1 and a package name $2
 # returns success if the function actually exists
 get_hook() {
@@ -3223,6 +3283,9 @@ EOF
 }
 
 add_automatic xz-utils
+add_automatic ngtcp2
+add_automatic nghttp3
+add_automatic cunit
 
 builddep_zlib() {
 	# gcc-multilib dependency unsatisfiable
@@ -3255,6 +3318,49 @@ patch_zlib() {
  	touch $@
 
 EOF
+}
+
+fake_install_package() {
+	local pkg="$1"
+	local arch="${2:-$HOST_ARCH}"
+
+	apt_get_install equivs
+
+	(
+		drop_privs mkdir -p "/tmp/buildd/fake-pkg"
+		cd "/tmp/buildd/fake-pkg"
+		drop_privs tee control >/dev/null <<EOF
+Section: misc
+Priority: optional
+Standards-Version: 3.9.2
+
+Package: fake-pkg-$pkg
+Provides: $pkg
+Architecture: $arch
+Multi-Arch: foreign
+EOF
+		drop_privs equivs-build -a"$arch" control
+		apt_get_install "./fake-pkg-${pkg}_"*.deb
+	)
+	drop_privs rm -rf "/tmp/buildd/fake-pkg"
+	apt_get_purge equivs
+}
+
+fake_remove_package() {
+	local pkg="$1"
+	apt_get_purge fake-pkg-"$pkg"
+}
+
+builddep_systemtap() {
+	fake_install_package libavahi-client-dev
+	fake_install_package python3-lxml
+	apt_get_build_dep "-a$1" --arch-only -P "$2" .
+	fake_remove_package python3-lxml
+	fake_remove_package libavahi-client-dev
+}
+
+buildenv_systemtap() {
+	export DEB_BUILD_OPTIONS="$DEB_BUILD_OPTIONS stap_disable_refdocs"
 }
 
 # choosing libatomic1 arbitrarily here, cause it never bumped soname
@@ -3788,6 +3894,23 @@ buildenv_perl() {
 }
 
 add_need perl # by libdpkg-perl
+add_need libgc # by gcc
+add_need libarchive # by elfutils
+add_need json-c # by elfutils
+
+buildenv_libmicrohttpd() {
+	# libmicrohttpd needs zlib1g-dev when compiling. During cross building, it tries to link against zlib for the host architecture,
+	# when it detects zlib header files. However, zlib1g-dev is not listed as a build dependency of libmicrohttpd, but is
+	# required by its other build dependencies. As a result, during cross building, zlib1g-dev:native is installed, but
+	# zlib1g-dev:host is not, which causes the linking to zlib to fail.
+	# To work around this, we set ac_cv_header_zlib_h=no, so that libmicrohttpd does not try to link against zlib.
+	export ac_cv_header_zlib_h=no
+}
+
+add_need libmicrohttpd # by elfutils
+add_need curl # by elfutils
+add_need nspr # by systemtap
+add_need nss # by systemtap
 
 automatically_cross_build_packages() {
 	local dosetmp profiles buildable new_needed line pkg missing source
@@ -4013,7 +4136,7 @@ mark_built libcap-ng
 automatically_cross_build_packages
 
 assert_built "zlib bzip2 xz-utils"
-cross_build elfutils pkg.elfutils.nodebuginfod
+cross_build elfutils pkg.elfutils.nodebuginfod elfutils_1
 mark_built elfutils
 # needed by glib2.0
 
@@ -4097,6 +4220,61 @@ else
 fi
 progress_mark "cross build binutils"
 mark_built binutils
+# needed for build-essential
+
+automatically_cross_build_packages
+
+cross_build elfutils
+mark_built elfutils
+# needed for systemtap
+
+automatically_cross_build_packages
+
+cross_build systemtap
+mark_built systemtap
+# needed for gcc
+
+automatically_cross_build_packages
+
+if test -f "$REPODIR/stamps/gcc_4"; then
+	echo "skipping cross rebuild of gcc"
+else
+	cross_build_setup "gcc-$GCC_VER" gcc_4
+	check_binNMU
+	(
+		nolang=${GCC_NOLANG:-}
+		test "$ENABLE_MULTILIB" = yes || nolang=$(set_add "$nolang" biarch)
+		export DEB_BUILD_OPTIONS="$DEB_BUILD_OPTIONS${nolang:+ nolang=$(join_words , $nolang)}"
+		hook=$(get_hook buildenv "gcc-$GCC_VER") && "$hook" "$HOST_ARCH"
+		export GCC_TARGET="$HOST_ARCH"
+		drop_privs dpkg-buildpackage -a"$HOST_ARCH" -d -T control
+		drop_privs dpkg-buildpackage -a"$HOST_ARCH" -d -T clean
+		fake_install_package "gnat-$GCC_VER"
+		fake_install_package "gdc-$GCC_VER"
+		fake_install_package "cargo"
+		for i in gobjc gdc gccgo gnat gm2 gcobol ga68; do
+			fake_install_package "$i-$GCC_VER-for-host"
+		done
+		apt_get_build_dep "-a$HOST_ARCH" --arch-only -P nocheck,nodoc,cross ./
+		fake_remove_package "gnat-$GCC_VER"
+		fake_remove_package "gdc-$GCC_VER"
+		fake_remove_package "cargo"
+		for i in gobjc gdc gccgo gnat gm2 gcobol ga68; do
+			fake_remove_package "$i-$GCC_VER-for-host"
+		done
+		drop_privs dpkg-buildpackage "-a$HOST_ARCH" -d -B -Pnocheck,nodoc -uc -us
+	)
+	cd ..
+	ls -l
+	drop_privs sed -i -e '/^ .* .*-for-host_.*deb$/d' ./*.changes
+	pickup_packages_with_addition *.changes
+	touch "$REPODIR/stamps/gcc_4"
+	compare_native ./*.deb
+	cd ..
+	drop_privs rm -Rf gcc_4
+fi
+progress_mark "cross build gcc"
+mark_built gcc
 # needed for build-essential
 
 automatically_cross_build_packages
