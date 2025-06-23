@@ -703,7 +703,38 @@ automatic_packages=
 add_automatic() { automatic_packages=$(set_add "$automatic_packages" "$1"); }
 
 add_automatic acl
+
 add_automatic apt
+buildenv_apt() {
+	profiles="pkg.apt.nosqv,$profiles"
+	apt_get_build_dep "-a$HOST_ARCH" --arch-only -P "$profiles" ./
+	if [ -e "/usr/bin/sqv" ]; then
+		echo "apt: temporarily remove sqv from build system"
+		mv -v /usr/bin/sqv /usr/bin/sqv.disabled
+		local hook=$(drop_privs_exec mktemp)
+		local signal_file=$(drop_privs_exec mktemp)
+		cat > "$hook" <<EOF
+#!/bin/sh
+echo "1" > "$signal_file"
+while [ -e "$signal_file" ]; do
+	sleep 1
+done
+exit 0
+EOF
+		chmod +x "$hook"
+		(
+			while [ "$(cat "$signal_file")" != "1" ]; do
+				sleep 1
+			done
+			echo "apt: move sqv back";
+			mv -v /usr/bin/sqv.disabled /usr/bin/sqv
+			rm -f "$hook"
+			rm -f "$signal_file"
+		) &
+		ignorebd="$ignorebd --hook-done=$hook"
+	fi
+}
+
 add_automatic attr
 add_automatic base-files
 add_automatic base-passwd
