@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  bootstrap:
+    build: .
+    privileged: true
+    volumes:
+      - .:/rebootstrap
+      - bootstrap-cache:/var/cache/apt
+      - bootstrap-tmp:/tmp
+    working_dir: /rebootstrap
+    environment:
+      - HOST_ARCH=riscv32
+      - DEBIAN_FRONTEND=noninteractive
+    tmpfs:
+      - /tmp:exec,size=8g
+    shm_size: 4g
+    stdin_open: true
+    tty: true
+
+volumes:
+  bootstrap-cache:
+  bootstrap-tmp:
