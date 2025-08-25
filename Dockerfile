@@ -20,6 +20,7 @@ RUN rm -f /etc/apt/sources.list.d/* \
     ca-certificates \
     gnupg \
     lsb-release \
+    qemu-user-static \
     && rm -rf /var/lib/apt/lists/*
 
 # 创建工作目录

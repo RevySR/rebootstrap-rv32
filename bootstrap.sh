@@ -643,22 +643,7 @@ automatic_packages=
 add_automatic() { automatic_packages=$(set_add "$automatic_packages" "$1"); }
 
 add_automatic acl
-add_automatic apparmor
 add_automatic apt
-add_automatic apache2
-# added to resolve build-dependency for apache2
-add_automatic apr
-add_automatic apr-util
-buildenv_apr() {
-    echo "Forcing configure checks for apr cross-compilation."
-    # need to manually provide the results of tests that cannot be run
-    # during cross-compilation. 'apr_cv_mutex_robust_shared' is the key one.
-    export apr_cv_mutex_robust_shared=yes
-	# This resolves: 'configure did not detect POSIX semaphores'.
-    # The check for 'working sem_open' fails because it's a runtime test.
-    # must manually set the cached variable to 'yes'.
-    export ac_cv_func_sem_open=yes
-}
 add_automatic attr
 add_automatic base-files
 add_automatic base-passwd
@@ -802,9 +787,8 @@ builddep_build_essential() {
 }
 
 add_automatic bzip2
-# added to resolve build-dependency for base-passwd
-add_automatic cairo
-add_automatic cdebconf
+add_automatic c-ares
+
 patch_cdebconf() {
 	echo "removing libglib2.0-dev depencency #1078936"
 	drop_privs patch -p1 <<'EOF'
@@ -827,6 +811,7 @@ patch_cdebconf() {
   Colin Watson <cjwatson@debian.org>,
 EOF
 }
+
 add_automatic coreutils
 add_automatic curl
 
@@ -845,8 +830,6 @@ buildenv_diffutils() {
 		export gl_cv_func_getopt_gnu=yes
 	fi
 }
-# added to resolve build-dependency for llvm-toolchain
-add_automatic diffstat
 
 add_automatic dpkg
 patch_dpkg() {
@@ -882,10 +865,10 @@ EOF
 }
 
 add_automatic e2fsprogs
-add_automatic elfutils
 add_automatic expat
 add_automatic file
 add_automatic findutils
+
 add_automatic flex
 patch_flex() {
 	test "$GCC_VER" -lt 15 && return 0
@@ -922,11 +905,6 @@ buildenv_fuse3() {
 patch_fuse3() {
 	if test "$HOST_ARCH" = riscv32; then
         	echo "patching fuse3 to support riscv32"
-			# The patch fails on newer fuse3 versions.
-        	# The required -latomic flag is already handled by buildenv_fuse3().
-        	# So skip this patch entirely.
-			echo "Skipping patch for fuse3, buildenv provides necessary LDFLAGS."
-        	return 0
                	drop_privs patch -p1  <<'EOF'
 diff -uNr fuse3-3.17.2.orig/debian/rules fuse3-3.17.2/debian/rules
 --- fuse3-3.17.2.orig/debian/rules	2025-02-22 14:44:45.000000000 +0800
@@ -935,8 +913,8 @@ diff -uNr fuse3-3.17.2.orig/debian/rules fuse3-3.17.2/debian/rules
  
  export DEB_BUILD_MAINT_OPTIONS = hardening=+all
  
--ifneq (,$(filter $(DEB_HOST_ARCH), armel m68k powerpc))
-+ifneq (,$(filter $(DEB_HOST_ARCH), armel m68k powerpc riscv32))
+-ifneq (,$(filter $(DEB_HOST_ARCH), arc armel m68k mips mipsel powerpc sh3 sh4 sparc))
++ifneq (,$(filter $(DEB_HOST_ARCH), arc armel m68k mips mipsel powerpc riscv32 sh3 sh4 sparc))
     export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed -latomic
  endif
 EOF
@@ -2494,14 +2472,6 @@ patch_gcc_14() {
 buildenv_gcc_14() {
 	echo "ignoring symbol differences #1085155"
 	export DPKG_GENSYMBOLS_CHECK_LEVEL=0
-	# When building stage3, we must ensure DEB_STAGE is not set,
-    # so that the full set of languages (including Fortran) is built.
-    # The 'cross_build' function is used for multiple gcc stages,
-    # so we check for the build stamp directory to identify stage3.
-    if [ -d /tmp/buildd/gcc3 ]; then
-        echo "  - Unsetting DEB_STAGE for gcc stage3 to enable all languages."
-        unset DEB_STAGE
-    fi
 }
 patch_gcc_15() {
 	patch_gcc_for_host_in_rtlibs
@@ -2509,8 +2479,6 @@ patch_gcc_15() {
 }
 
 add_automatic gdbm
-# added to resolve build-dependency for libxt
-add_automatic glib2.0
 buildenv_gdbm() {
 	if dpkg-architecture "-a$1" -ignu-any-any; then
 		export ac_cv_func_mmap_fixed_mapped=yes
@@ -2636,10 +2604,6 @@ buildenv_gmp() {
 		export DEB_CFLAGS_FOR_BUILD_APPEND="${DEB_CFLAGS_FOR_BUILD_APPEND:-} -std=gnu17"
 	fi
 }
-add_automatic gobject-introspection
-# gobject-introspection needs a patch/profile for stage1 build.
-# We will handle this in its manual build step if the automatic one fails.
-# For now, just adding it to the list.
 
 add_automatic gpm
 buildenv_gpm() {
@@ -2684,9 +2648,6 @@ buildenv_gzip() {
 add_automatic hostname
 add_automatic icu
 add_automatic isl
-# added to resolve build-dependency for elfutils
-add_automatic json-c
-
 add_automatic jansson
 add_automatic jemalloc
 add_automatic keyutils
@@ -2698,8 +2659,6 @@ buildenv_krb5() {
 	export ac_cv_func_regcomp=yes
 	export ac_cv_printf_positional=yes
 }
-# added to resolve build-dependency for elfutils
-add_automatic libarchive
 
 add_automatic libassuan
 add_automatic libatomic-ops
@@ -2734,9 +2693,6 @@ add_automatic libidn
 add_automatic libidn2
 add_automatic libksba
 add_automatic libmd
-# added to resolve build-dependency for elfutils
-add_automatic libmicrohttpd
-
 add_automatic libnsl
 add_automatic libonig
 patch_libonig() {
@@ -3125,11 +3081,8 @@ EOF
 	drop_privs ./debian/rules debian/rules.gen
 }
 
-# added to resolve build-dependency for apr
-add_automatic lksctp-tools
 add_automatic lmdb
 add_automatic lz4
-add_automatic lzo2
 add_automatic man-db
 add_automatic mawk
 add_automatic mpclib3
@@ -3153,8 +3106,6 @@ builddep_ncurses() {
 }
 
 add_automatic nettle
-# added to resolve build-dependency for cdebconf
-add_automatic newt
 add_automatic nghttp2
 add_automatic npth
 add_automatic nspr
@@ -3191,8 +3142,6 @@ patch_openldap() {
 	echo "FTCBFS #1094386"
 	drop_privs sed -i -e 's/AC_CHECK_PROGS/AC_CHECK_TOOLS/' configure.ac
 }
-# added to resolve build-dependency for krb5
-add_automatic openldap
 
 add_automatic openssl
 patch_openssl() {
@@ -3230,64 +3179,6 @@ add_automatic pcre2
 add_automatic pcre3
 add_automatic pkgconf
 add_automatic popt
-add_automatic postgresql-17
-patch_postgresql_17() {
-	if test "$HOST_ARCH" = riscv32; then
-		echo "Patching postgresql-17 for riscv32: Minimal bootstrap build."
-		# Remove problematic Build-Depends that are not yet available
-		drop_privs sed -i '/systemtap-sdt-dev/d' debian/control
-		drop_privs sed -i '/libkrb5-dev/d' debian/control  
-		drop_privs sed -i '/libperl-dev/d' debian/control
-		drop_privs sed -i '/libsystemd-dev/d' debian/control
-		drop_privs sed -i '/libxslt1-dev/d' debian/control
-		drop_privs sed -i '/perl (>= 5.8)/d' debian/control
-		drop_privs sed -i '/xsltproc/d' debian/control
-	fi
-}
-# added to resolve build-dependency for newt
-add_automatic python3-defaults
-patch_python3_defaults() {
-    # STRATEGY: Instead of patching individual commands, we patch the Makefile's
-    # conditional logic. The 'rules' file uses 'ifeq ($(with_doc),yes)' blocks
-    # to control all doc generation. We will change 'yes' to a value that
-    # can never be true, ensuring these blocks are always skipped.
-    # This is the most robust and clean way to solve the problem.
-    
-    drop_privs sed -i "s/ifeq (\$(with_doc),yes)/ifeq (\$(with_doc),no_thanks_im_bootstrapping)/g" debian/rules
-                   
-    echo "DEBUG: Patching complete. Let's verify the change:"
-    echo "--- Checking for 'ifeq' condition ---"
-    grep -C 2 "no_thanks_im_bootstrapping" debian/rules || echo "  ERROR: Failed to patch the 'ifeq' condition!"
-    echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-}
-add_automatic python3.13
-patch_python3_13() {
-	# For riscv32 bootstrap, the systemtap-sdt-dev dependency is problematic.
-	# The debian/rules file enables --with-dtrace for all non-Hurd OSes.
-	# We will patch this logic to also disable it for riscv32.
-	# This single change prevents the build system from needing systemtap,
-	# and as a result, `apt-get build-dep` will no longer try to install it,
-	# solving both issues at once.
-	if test "$HOST_ARCH" = riscv32; then
-        echo "Patching python3.13 for riscv32: Disabling systemtap/dtrace and nis support."
-        
-        # --- Solution for systemtap ---
-        # Remove systemtap-sdt-dev from Build-Depends completely
-        drop_privs sed -i '/systemtap-sdt-dev/d' debian/control
-        
-        # Remove --with-dtrace to disable dtrace (default behavior)
-        drop_privs sed -i "s/--with-dtrace //g" debian/rules
-        
-        # --- Solution for libnsl ---
-        # The nis module is non-essential. We comment out the dependency
-        # and the configure script will automatically skip building the module.
-        drop_privs sed -i 's/^\( *libnsl-dev.*\)/#\1/g' debian/control
-	fi
-}
-add_automatic pixman
-# added to provide cross-exe-wrapper for glib2.0
-add_automatic architecture-properties
-
 
 builddep_readline() {
 	assert_built "ncurses"
@@ -3320,14 +3211,9 @@ patch_sed() {
 }
 
 add_automatic shadow
-
 add_automatic slang2
 add_automatic spdylay
-add_automatic sphinx
 add_automatic sqlite3
-# added to resolve build-dependency for coreutils and apt
-add_automatic systemd
-add_automatic systemtap
 add_automatic sysvinit
 
 add_automatic tar
@@ -3366,8 +3252,6 @@ add_automatic ustr
 buildenv_util_linux() {
 	export scanf_cv_type_modifier=ms
 }
-
-add_automatic valgrind-if-available
 
 add_automatic xft
 
@@ -3713,8 +3597,6 @@ else
 			apt_get_install "musl-dev-$HOST_ARCH-cross"
 		fi
 	fi
-	
-
 	cross_build_setup "gcc-$GCC_VER" gcc3
 	check_binNMU
 	dpkg-checkbuilddeps -a$HOST_ARCH || : # tell unmet build depends
@@ -4030,40 +3912,18 @@ assert_built() {
 	call_dose_builddebcheck --failures --explain --latest=1 --deb-drop-b-d-indep "--deb-profiles=$(join_words , $profiles)" "--checkonly=$(join_words , $missing_pkgs)"
 	return 1
 }
-# Manually build zlib first, because many packages in the automatic loop depend on it (e.g., libmicrohttpd).
-echo "Force-building zlib before the automatic loop..."
+
+automatically_cross_build_packages
+
 cross_build zlib "$(if test "$ENABLE_MULTILIB" != yes; then echo stage1; fi)"
 mark_built zlib
+# needed by dpkg, file, gnutls28, libpng1.6, libtool, libxml2, perl, slang2, tcl8.6, util-linux
 
-echo "MANUALLY INSTALLING the freshly built zlib-dev to ensure availability..."
-apt_get_install "zlib1g-dev:$HOST_ARCH"
+automatically_cross_build_packages
 
-# Dependencies for slang2
-
-
-cross_build libonig
-mark_built libonig
-
-cross_build pcre2
-mark_built pcre2
-
-cross_build libpng1.6
-mark_built libpng1.6
-
-cross_build slang2
-mark_built slang2
-
-cross_build popt
-mark_built popt
-
-cross_build fribidi
-mark_built fribidi
-
-cross_build tcl8.6
-mark_built tcl8.6
-
-cross_build newt nopython newt_1
-mark_built newt
+cross_build libtool
+mark_built libtool
+# needed libffi
 
 automatically_cross_build_packages
 
@@ -4076,6 +3936,7 @@ automatically_cross_build_packages
 cross_build readline
 mark_built readline
 # needed by gnupg2, libxml2
+
 automatically_cross_build_packages
 
 if dpkg-architecture "-a$HOST_ARCH" -ilinux-any; then
@@ -4084,9 +3945,6 @@ if dpkg-architecture "-a$HOST_ARCH" -ilinux-any; then
 	mark_built libselinux
 # needed by coreutils, dpkg, findutils, glibc, sed, tar, util-linux
 
-automatically_cross_build_packages
-cross_build cdebconf "pkg.cdebconf.nogtk" cdebconf_1
-mark_built cdebconf
 automatically_cross_build_packages
 fi # $HOST_ARCH matches linux-any
 
@@ -4146,36 +4004,11 @@ dpkg-architecture "-a$HOST_ARCH" -ilinux-any || assert_built libbsd
 cross_build unbound pkg.unbound.libonly unbound_1
 mark_built unbound
 # needed by gnutls28
+
 automatically_cross_build_packages
-cross_build elfutils pkg.elfutils.nodebuginfod
-mark_built elfutils
-automatically_cross_build_packages
-cross_build libtool
-mark_built libtool
-automatically_cross_build_packages
-cross_build libffi
-mark_built libffi
-automatically_cross_build_packages
-cross_build architecture-properties
-mark_built architecture-properties
-automatically_cross_build_packages
-cross_build glib2.0 nogir glib2.0_1
-mark_built glib2.0
-automatically_cross_build_packages
-cross_build openldap pkg.openldap.noslapd openldap_1
-mark_built openldap
-automatically_cross_build_packages
-cross_build valgrind-if-available
-mark_built valgrind-if-available
-automatically_cross_build_packages
-cross_build python3.13 pkg.python3.13.nobluetooth python3.13_1
-mark_built python3.13
-cross_build python3-defaults "nodoc" python3-defaults_1
-mark_built python3-defaults
-automatically_cross_build_packages
-cross_build postgresql-17 pkg.postgresql.nollvm postgresql-17_1
-mark_built postgresql-17
-automatically_cross_build_packages
+
+cross_build gmp
+mark_built gmp
 assert_built "gmp libidn2 p11-kit libtasn1-6 unbound libunistring nettle"
 cross_build gnutls28 noguile gnutls28_1
 mark_built gnutls28
@@ -4187,6 +4020,7 @@ assert_built "gnutls28 cyrus-sasl2"
 cross_build openldap pkg.openldap.noslapd openldap_1
 mark_built openldap
 # needed by curl
+
 automatically_cross_build_packages
 
 if dpkg-architecture "-a$HOST_ARCH" -ilinux-any; then
@@ -4209,6 +4043,9 @@ mark_built systemd
 
 automatically_cross_build_packages
 
+cross_build attr
+mark_built attr
+assert_built attr
 cross_build libcap-ng nopython libcap-ng_1
 mark_built libcap-ng
 # needed by audit
@@ -4224,7 +4061,9 @@ assert_built "gnutls28 libgcrypt20 libtool"
 automatically_cross_build_packages
 
 assert_built "zlib bzip2 xz-utils"
-
+cross_build elfutils pkg.elfutils.nodebuginfod
+mark_built elfutils
+# needed by glib2.0
 
 automatically_cross_build_packages
 
@@ -4234,7 +4073,8 @@ mark_built libxt
 
 automatically_cross_build_packages
 
-# mark_built libffi
+cross_build libffi
+mark_built libffi
 assert_built "elfutils libffi"
 dpkg-architecture "-a$HOST_ARCH" -ilinux-any && assert_built "util-linux libselinux"
 cross_build glib2.0 "nogir pkg.glib2.0.nosysprof" glib2.0_1
