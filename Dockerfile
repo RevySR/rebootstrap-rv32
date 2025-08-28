@@ -20,12 +20,13 @@ RUN rm -f /etc/apt/sources.list.d/* \
     ca-certificates \
     gnupg \
     lsb-release \
-    qemu-user-static \
+    debootstrap \
     && rm -rf /var/lib/apt/lists/*
 
 # 创建工作目录
 WORKDIR /rebootstrap
-
+COPY . .
+COPY --from=multiarch/qemu-user-static /usr/bin/qemu-riscv32-static /usr/bin/
 # 设置权限
 RUN chmod 755 /rebootstrap
 
