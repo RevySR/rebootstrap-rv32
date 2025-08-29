@@ -46,38 +46,64 @@ mount -o bind /dev/pts "$CHROOT_DIR/dev/pts"
 cp -a /rebootstrap/tmp_repo "$CHROOT_DIR/rebootstrap/"
 
 # 5. install essential packages manually to avoid dependency issues
-# chroot "$CHROOT_DIR" /bin/sh -c 'dpkg --unpack /var/cache/apt/archives/libc6*_riscv32.deb'
-# chroot "$CHROOT_DIR" /usr/bin/dpkg --configure libc6
-# chroot "$CHROOT_DIR" /bin/sh -c 'dpkg --unpack /var/cache/apt/archives/libbz2*_riscv32.deb'
-# chroot "$CHROOT_DIR" /usr/bin/dpkg --configure libbz2-1.0
-# chroot "$CHROOT_DIR" /bin/sh -c 'dpkg --unpack /var/cache/apt/archives/liblzma5*_riscv32.deb'
-# chroot "$CHROOT_DIR" /usr/bin/dpkg --configure liblzma5
-# chroot "$CHROOT_DIR" /bin/sh -c 'dpkg --unpack /var/cache/apt/archives/libmd0*_riscv32.deb'
-# chroot "$CHROOT_DIR" /usr/bin/dpkg --configure libmd0
-# chroot "$CHROOT_DIR" /bin/sh -c 'dpkg --unpack /var/cache/apt/archives/libpcre2-8-0*_riscv32.deb'
-# chroot "$CHROOT_DIR" /usr/bin/dpkg --configure libpcre2-8-0
-# chroot "$CHROOT_DIR" /bin/sh -c 'dpkg --unpack /var/cache/apt/archives/libselinux1*_riscv32.deb'
-# chroot "$CHROOT_DIR" /usr/bin/dpkg --configure libselinux1
-# chroot "$CHROOT_DIR" /bin/sh -c 'dpkg --unpack /var/cache/apt/archives/libzstd1*_riscv32.deb'
-# chroot "$CHROOT_DIR" /usr/bin/dpkg --configure libzstd1
-# chroot "$CHROOT_DIR" /bin/sh -c 'dpkg --unpack /var/cache/apt/archives/zlib1g*_riscv32.deb'
-# chroot "$CHROOT_DIR" /usr/bin/dpkg --configure zlib1g
-# chroot "$CHROOT_DIR" /bin/sh -c 'dpkg --unpack /var/cache/apt/archives/libacl1*_riscv32.deb'
-# chroot "$CHROOT_DIR" /usr/bin/dpkg --configure libacl1
-# chroot "$CHROOT_DIR" /bin/sh -c 'dpkg --unpack /var/cache/apt/archives/tar*_riscv32.deb'
-# chroot "$CHROOT_DIR" /usr/bin/dpkg --configure tar
-# chroot "$CHROOT_DIR" /bin/sh -c 'dpkg --unpack /var/cache/apt/archives/libdebconfclient0*_riscv32.deb'
-# chroot "$CHROOT_DIR" /usr/bin/dpkg --configure libdebconfclient0
-# chroot "$CHROOT_DIR" /bin/sh -c 'dpkg --unpack /var/cache/apt/archives/mawk*_riscv32.deb'
-# chroot "$CHROOT_DIR" /usr/bin/dpkg --configure mawk
-# chroot "$CHROOT_DIR" /bin/sh -c 'dpkg --unpack /var/cache/apt/archives/libcrypt1*_riscv32.deb'
-# chroot "$CHROOT_DIR" /usr/bin/dpkg --configure libcrypt1
+chroot "$CHROOT_DIR" /bin/sh -c 'dpkg --unpack /var/cache/apt/archives/libc6*_riscv32.deb'
+chroot "$CHROOT_DIR" /usr/bin/dpkg --configure libc6
+chroot "$CHROOT_DIR" /bin/sh -c 'dpkg --unpack /var/cache/apt/archives/libbz2*_riscv32.deb'
+chroot "$CHROOT_DIR" /usr/bin/dpkg --configure libbz2-1.0
+chroot "$CHROOT_DIR" /bin/sh -c 'dpkg --unpack /var/cache/apt/archives/liblzma5*_riscv32.deb'
+chroot "$CHROOT_DIR" /usr/bin/dpkg --configure liblzma5
+chroot "$CHROOT_DIR" /bin/sh -c 'dpkg --unpack /var/cache/apt/archives/libmd0*_riscv32.deb'
+chroot "$CHROOT_DIR" /usr/bin/dpkg --configure libmd0
+chroot "$CHROOT_DIR" /bin/sh -c 'dpkg --unpack /var/cache/apt/archives/libpcre2-8-0*_riscv32.deb'
+chroot "$CHROOT_DIR" /usr/bin/dpkg --configure libpcre2-8-0
+chroot "$CHROOT_DIR" /bin/sh -c 'dpkg --unpack /var/cache/apt/archives/libselinux1*_riscv32.deb'
+chroot "$CHROOT_DIR" /usr/bin/dpkg --configure libselinux1
+chroot "$CHROOT_DIR" /bin/sh -c 'dpkg --unpack /var/cache/apt/archives/libzstd1*_riscv32.deb'
+chroot "$CHROOT_DIR" /usr/bin/dpkg --configure libzstd1
+chroot "$CHROOT_DIR" /bin/sh -c 'dpkg --unpack /var/cache/apt/archives/zlib1g*_riscv32.deb'
+chroot "$CHROOT_DIR" /usr/bin/dpkg --configure zlib1g
+chroot "$CHROOT_DIR" /bin/sh -c 'dpkg --unpack /var/cache/apt/archives/libacl1*_riscv32.deb'
+chroot "$CHROOT_DIR" /usr/bin/dpkg --configure libacl1
+chroot "$CHROOT_DIR" /bin/sh -c 'dpkg --unpack /var/cache/apt/archives/tar*_riscv32.deb'
+chroot "$CHROOT_DIR" /usr/bin/dpkg --configure tar
+chroot "$CHROOT_DIR" /bin/sh -c 'dpkg --unpack /var/cache/apt/archives/libdebconfclient0*_riscv32.deb'
+chroot "$CHROOT_DIR" /usr/bin/dpkg --configure libdebconfclient0
+chroot "$CHROOT_DIR" /bin/sh -c 'dpkg --unpack /var/cache/apt/archives/mawk*_riscv32.deb'
+chroot "$CHROOT_DIR" /usr/bin/dpkg --configure mawk
+chroot "$CHROOT_DIR" /bin/sh -c 'dpkg --unpack /var/cache/apt/archives/libcrypt1*_riscv32.deb'
+chroot "$CHROOT_DIR" /usr/bin/dpkg --configure libcrypt1
+chroot "$CHROOT_DIR" /bin/sh -c 'dpkg --unpack /var/cache/apt/archives/base-passwd*_riscv32.deb'
+chroot "$CHROOT_DIR" /usr/bin/dpkg --configure base-passwd
+chroot "$CHROOT_DIR" /bin/sh -c 'dpkg --unpack /var/cache/apt/archives/libdb5.3t64*_riscv32.deb'
+chroot "$CHROOT_DIR" /usr/bin/dpkg --configure libdb5.3t64
+chroot "$CHROOT_DIR" /bin/sh -c 'dpkg --unpack /var/cache/apt/archives/debconf*_all.deb'
+chroot "$CHROOT_DIR" /usr/bin/dpkg --configure debconf
+chroot "$CHROOT_DIR" /bin/sh -c 'dpkg --unpack /var/cache/apt/archives/libpam0g*_riscv32.deb'
+chroot "$CHROOT_DIR" /usr/bin/dpkg --configure libpam0g
+chroot "$CHROOT_DIR" /bin/sh -c 'dpkg --unpack /var/cache/apt/archives/libpam-modules-bin*_riscv32.deb'
+chroot "$CHROOT_DIR" /usr/bin/dpkg --configure libpam-modules-bin
+chroot "$CHROOT_DIR" /bin/sh -c 'dpkg --unpack /var/cache/apt/archives/libpam-modules_*_riscv32.deb'
+chroot "$CHROOT_DIR" /usr/bin/dpkg --configure libpam-modules
+chroot "$CHROOT_DIR" /bin/sh -c 'dpkg --unpack /var/cache/apt/archives/libattr1*_riscv32.deb'
+chroot "$CHROOT_DIR" /usr/bin/dpkg --configure libattr1
+chroot "$CHROOT_DIR" /bin/sh -c 'dpkg --unpack /var/cache/apt/archives/libcap-ng0*_riscv32.deb'
+chroot "$CHROOT_DIR" /usr/bin/dpkg --configure libcap-ng0
+chroot "$CHROOT_DIR" /bin/sh -c 'dpkg --unpack /var/cache/apt/archives/libaudit-common*_all.deb'
+chroot "$CHROOT_DIR" /usr/bin/dpkg --configure libaudit-common
+chroot "$CHROOT_DIR" /bin/sh -c 'dpkg --unpack /var/cache/apt/archives/libaudit1*_riscv32.deb'
+chroot "$CHROOT_DIR" /usr/bin/dpkg --configure libaudit1
+chroot "$CHROOT_DIR" /bin/sh -c 'dpkg --unpack /var/cache/apt/archives/libbsd0*_riscv32.deb'
+chroot "$CHROOT_DIR" /usr/bin/dpkg --configure libbsd0
+chroot "$CHROOT_DIR" /bin/sh -c 'dpkg --unpack /var/cache/apt/archives/login.defs*_all.deb'
+chroot "$CHROOT_DIR" /usr/bin/dpkg --configure login.defs
+# chroot "$CHROOT_DIR" /bin/sh -c 'dpkg --unpack /var/cache/apt/archives/passwd*_riscv32.deb'
+# echo "--> Setting PATH and configuring passwd..."
+# chroot "$CHROOT_DIR" /bin/sh -c 'export PATH="/sbin:/usr/sbin:/bin:/usr/bin:$PATH" && dpkg --configure passwd'
 # chroot "$CHROOT_DIR" /bin/sh -c 'dpkg --unpack /var/cache/apt/archives/dpkg*riscv32.deb'
 # chroot "$CHROOT_DIR" /usr/bin/dpkg --configure dpkg
 
 
-
-# 6. run debootstrap stage2 (configure rest)
+# 7. run debootstrap stage2 (configure rest)
 echo "--> Running debootstrap second stage (configuring the rest)..."
 chroot "$CHROOT_DIR" /debootstrap/debootstrap --second-stage
 
@@ -88,6 +114,7 @@ cat << EOF > "$CHROOT_DIR/etc/apt/sources.list"
 deb [trusted=yes] file:///rebootstrap rebootstrap main
 EOF
 chroot "$CHROOT_DIR" /usr/bin/apt-get update
+chroot "$CHROOT_DIR" /usr/bin/apt --fix-broken install
 chroot "$CHROOT_DIR" /usr/bin/apt list || true
 
 echo ""
