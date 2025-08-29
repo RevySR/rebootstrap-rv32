@@ -14,7 +14,7 @@ ENABLE_MULTILIB=no
 ENABLE_MULTIARCH_GCC=yes
 REPODIR=/tmp/repo
 # https://salsa.debian.org/apt-team/apt#debugging
-APT_GET="apt-get --no-install-recommends -y -o Debug::pkgProblemResolver=true -o Debug::pkgDepCache::Marker=1 -o Debug::pkgDepCache::AutoInstall=1 -o Acquire::Languages=none"
+APT_GET="apt-get --no-install-recommends -y --allow-downgrades -o Debug::pkgProblemResolver=true -o Debug::pkgDepCache::Marker=1 -o Debug::pkgDepCache::AutoInstall=1 -o Acquire::Languages=none"
 DEFAULT_PROFILES="cross nocheck noinsttest noudeb"
 DROP_PRIVS=buildd
 GCC_NOLANG="ada algol asan brig cobol d gcn go itm java jit hppa64 lsan m2 nvptx objc obj-c++ rust tsan ubsan"
@@ -913,8 +913,8 @@ diff -uNr fuse3-3.17.2.orig/debian/rules fuse3-3.17.2/debian/rules
  
  export DEB_BUILD_MAINT_OPTIONS = hardening=+all
  
--ifneq (,$(filter $(DEB_HOST_ARCH), armel m68k powerpc))
-+ifneq (,$(filter $(DEB_HOST_ARCH), armel m68k powerpc riscv32))
+-ifneq (,$(filter $(DEB_HOST_ARCH), arc armel m68k mips mipsel powerpc sh3 sh4 sparc))
++ifneq (,$(filter $(DEB_HOST_ARCH), arc armel m68k mips mipsel powerpc riscv32 sh3 sh4 sparc))
     export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed -latomic
  endif
 EOF
@@ -3041,7 +3041,7 @@ patch_linux() {
 	local kernel_arch
 	kernel_arch=
 	cat - debian/changelog <<EOF |
-linux ($(dpkg-parsechangelog -SVersion)+rebootstrap1) trixie; urgency=medium
+linux ($(dpkg-parsechangelog -SVersion)~rebootstrap1) UNRELEASED; urgency=medium
 
   * Update for $HOST_ARCH
 
@@ -4007,7 +4007,8 @@ mark_built unbound
 
 automatically_cross_build_packages
 
-# mark_built gmp
+cross_build gmp
+mark_built gmp
 assert_built "gmp libidn2 p11-kit libtasn1-6 unbound libunistring nettle"
 cross_build gnutls28 noguile gnutls28_1
 mark_built gnutls28
@@ -4042,7 +4043,8 @@ mark_built systemd
 
 automatically_cross_build_packages
 
-# mark_built attr
+cross_build attr
+mark_built attr
 assert_built attr
 cross_build libcap-ng nopython libcap-ng_1
 mark_built libcap-ng
@@ -4071,7 +4073,8 @@ mark_built libxt
 
 automatically_cross_build_packages
 
-# mark_built libffi
+cross_build libffi
+mark_built libffi
 assert_built "elfutils libffi"
 dpkg-architecture "-a$HOST_ARCH" -ilinux-any && assert_built "util-linux libselinux"
 cross_build glib2.0 "nogir pkg.glib2.0.nosysprof" glib2.0_1

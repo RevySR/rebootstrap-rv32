@@ -1,0 +1,19 @@
+services:
+  bootstrap:
+    build: .
+    privileged: true
+    volumes:
+      - .:/rebootstrap
+      - bootstrap-cache:/var/cache/apt
+    working_dir: /rebootstrap
+    environment:
+      - HOST_ARCH=riscv32
+      - DEBIAN_FRONTEND=noninteractive
+    tmpfs:
+      - /tmp:exec,size=20g
+    shm_size: 4g
+    stdin_open: true
+    tty: true
+
+volumes:
+  bootstrap-cache:
