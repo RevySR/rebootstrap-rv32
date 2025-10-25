@@ -3861,7 +3861,7 @@ for pkg in $(discover_essential); do
 		echo "rebootstrap-debug: not scheduling essential package $pkg"
 	fi
 done
-add_need acl # by coreutils, systemd
+add_need acl # by coreutils, systemd, gettext
 add_need apt # almost essential
 add_need blt # by pythonX.Y
 add_need bsdmainutils # for man-db
@@ -3894,7 +3894,7 @@ if dpkg-architecture "-a$HOST_ARCH" -ihurd-any; then
 fi
 add_need libtasn1-6 # by gnutls28
 add_need libtextwrap # by cdebconf
-add_need libunistring # by gnutls28
+add_need libunistring # by gnutls28, gettext
 add_need libxcrypt # by cyrus-sasl2, pam, shadow, systemd
 add_need libxrender # by cairo
 add_need libzstd # by systemd
@@ -3919,6 +3919,9 @@ add_need tcp-wrappers # by audit
 add_need xz-utils # by libxml2
 add_need libffi # by glib2.0
 add_need gcc-defaults # by build-essential
+add_need attr # by gettext
+add_automatic libsigsegv # by m4
+add_need m4 # by debhelper->dh_autoreconf->autoconf
 
 buildenv_perl() {
 	export DEB_BUILD_OPTIONS="$DEB_BUILD_OPTIONS parallel=1"
@@ -3942,6 +3945,7 @@ add_need libmicrohttpd # by elfutils
 add_need curl # by elfutils
 add_need nspr # by systemtap
 add_need nss # by systemtap
+add_need dwz # by debhelper
 
 automatically_cross_build_packages() {
 	local dosetmp profiles buildable new_needed line pkg missing source
@@ -4233,6 +4237,13 @@ mark_built make-dfsg
 
 automatically_cross_build_packages
 
+assert_built "acl attr libunistring libxml2 ncurses"
+cross_build gettext nojava gettext_1
+mark_built gettext
+# needed by debhelper
+
+automatically_cross_build_packages
+
 if test -f "$REPODIR/stamps/binutils_2"; then
 	echo "skipping cross rebuild of binutils"
 else
@@ -4323,4 +4334,5 @@ apt_get_install botch
 package_list=$(mktemp -t packages.XXXXXXXXXX)
 grep-dctrl --exact --field Architecture '(' "$HOST_ARCH" --or all ')' /var/lib/apt/lists/*_Packages > "$package_list"
 botch-distcheck-more-problems "--deb-native-arch=$HOST_ARCH" --successes --failures --explain --checkonly "build-essential:$HOST_ARCH" "--bg=deb://$package_list" "--fg=deb://$package_list" || :
+botch-distcheck-more-problems "--deb-native-arch=$HOST_ARCH" --successes --failures --explain --checkonly "debhelper:$HOST_ARCH" "--bg=deb://$package_list" "--fg=deb://$package_list" || :
 rm -f "$package_list"
