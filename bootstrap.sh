@@ -4278,6 +4278,14 @@ mark_built systemtap
 
 automatically_cross_build_packages
 
+cross_build gnupg2 pkg.gnupg2.gpgvonly gnupg2_1
+mark_built gnupg2
+# needed for apt
+
+automatically_cross_build_packages
+
+assert_built "$need_packages"
+
 if test -f "$REPODIR/stamps/gcc_4"; then
 	echo "skipping cross rebuild of gcc"
 else
@@ -4318,16 +4326,6 @@ fi
 progress_mark "cross build gcc"
 mark_built gcc
 # needed for build-essential
-
-automatically_cross_build_packages
-
-cross_build gnupg2 pkg.gnupg2.gpgvonly gnupg2_1
-mark_built gnupg2
-# needed for apt
-
-automatically_cross_build_packages
-
-assert_built "$need_packages"
 
 echo "checking installability of build-essential with dose"
 apt_get_install botch
