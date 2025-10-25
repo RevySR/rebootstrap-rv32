@@ -713,7 +713,7 @@ buildenv_apt() {
 		mv -v /usr/bin/sqv /usr/bin/sqv.disabled
 		local hook=$(drop_privs_exec mktemp)
 		local signal_file=$(drop_privs_exec mktemp)
-		cat > "$hook" <<EOF
+		drop_privs tee "$hook" >/dev/null <<EOF
 #!/bin/sh
 echo "1" > "$signal_file"
 while [ -e "$signal_file" ]; do
