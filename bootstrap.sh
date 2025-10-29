@@ -17,7 +17,7 @@ REPODIR=/tmp/repo
 APT_GET="apt-get --no-install-recommends -y -o Debug::pkgProblemResolver=true -o Debug::pkgDepCache::Marker=1 -o Debug::pkgDepCache::AutoInstall=1 -o Acquire::Languages=none -o Acquire::GzipIndexes=false"
 DEFAULT_PROFILES="cross nocheck noinsttest noudeb"
 DROP_PRIVS=buildd
-GCC_NOLANG="ada algol asan brig cobol d gcn go itm java jit hppa64 lsan m2 nvptx objc obj-c++ rust tsan ubsan"
+GCC_NOLANG="algol asan brig cobol gcn go itm java jit hppa64 lsan m2 nvptx objc obj-c++ rust tsan ubsan"
 ENABLE_DIFFOSCOPE=no
 DIST=sid
 
@@ -778,12 +778,12 @@ patch_binutils() {
 +++ b/debian/rules
 @@ -751,6 +751,7 @@
  		mandir=$(pwd)/$(D_CROSS)/$(PF)/share/man install
- 
+
  	rm -rf \
 +		$(D_CROSS)/$(PF)/lib/ldscripts \
  		$(D_CROSS)/$(PF)/share/info \
  		$(D_CROSS)/$(PF)/share/locale
- 
+
 EOF
 	if test "$HOST_ARCH" = hppa; then
 		echo "patching binutils to discard hppa64 ldscripts"
@@ -950,12 +950,12 @@ patch_flex() {
 --- a/lib/malloc.c
 +++ b/lib/malloc.c
 @@ -3,7 +3,7 @@
-      
+
       #include <sys/types.h>
-      
+
 -     void *malloc ();
 +     void *malloc (size_t);
-      
+
       /* Allocate an N-byte block of memory from the heap.
          If N is zero, allocate a 1-byte block.  */
 EOF
@@ -1635,7 +1635,7 @@ patch_gcc_for_host_in_rtlibs() {
 +    addons += adaforhost
 +  endif
  endif
- 
+
    ifneq ($(DEB_CROSS),yes)
 --- a/debian/rules.d/binary-ada.mk
 +++ b/debian/rules.d/binary-ada.mk
@@ -2471,11 +2471,235 @@ patch_gcc_wdotap() {
 EOF
 	fi
 }
+patch_gcc_ada() {
+	drop_privs patch -p1 <<'EOF'
+diff --git a/debian/patches/ada-gnat-name.diff b/debian/patches/ada-gnat-name.diff
+index 1868c45..7cbafad 100644
+--- a/debian/patches/ada-gnat-name.diff
++++ b/debian/patches/ada-gnat-name.diff
+@@ -9,7 +9,7 @@ this patch is incomplete. It still fails when building libada.
+  ada/stamp-gen_il: $(fsrcdir)/ada/gen_il*
+  	$(MKDIR) ada/gen_il
+ -	cd ada/gen_il; gnatmake -q -g $(GEN_IL_FLAGS) gen_il-main
+-+	cd ada/gen_il; $(GNATMAKE) -q -g $(GEN_IL_FLAGS) gen_il-main
+++	cd ada/gen_il; gnatmake -q -g $(GEN_IL_FLAGS) gen_il-main
+  	# Ignore errors to work around finalization issues in older compilers
+  	- cd ada/gen_il; ./gen_il-main
+  	$(fsrcdir)/../move-if-change ada/gen_il/seinfo_tables.ads ada/seinfo_tables.ads
+@@ -18,7 +18,7 @@ this patch is incomplete. It still fails when building libada.
+  # hand, as a sanity check that these files are legal.
+  ada/seinfo_tables.o: ada/seinfo_tables.ads ada/seinfo_tables.adb
+ -	cd ada ; gnatmake $(GEN_IL_INCLUDES) seinfo_tables.adb -gnatU -gnatX
+-+	cd ada ; $(GNATMAKE) $(GEN_IL_INCLUDES) seinfo_tables.adb -gnatU -gnatX
+++	cd ada ; gnatmake $(GEN_IL_INCLUDES) seinfo_tables.adb -gnatU -gnatX
+  
+  ada/snames.h ada/snames.ads ada/snames.adb : ada/stamp-snames ; @true
+  ada/stamp-snames : ada/snames.ads-tmpl ada/snames.adb-tmpl ada/snames.h-tmpl ada/xsnamest.adb ada/xutil.ads ada/xutil.adb
+@@ -26,7 +26,7 @@ this patch is incomplete. It still fails when building libada.
+  	$(RM) $(addprefix ada/bldtools/snamest/,$(notdir $^))
+  	$(CP) $^ ada/bldtools/snamest
+ -	cd ada/bldtools/snamest && gnatmake -q xsnamest && ./xsnamest
+-+	cd ada/bldtools/snamest && $(GNATMAKE) -q xsnamest && ./xsnamest
+++	cd ada/bldtools/snamest && gnatmake -q xsnamest && ./xsnamest
+  	$(fsrcdir)/../move-if-change ada/bldtools/snamest/snames.ns ada/snames.ads
+  	$(fsrcdir)/../move-if-change ada/bldtools/snamest/snames.nb ada/snames.adb
+  	$(fsrcdir)/../move-if-change ada/bldtools/snamest/snames.nh ada/snames.h
+diff --git a/debian/patches/ada-replace-hardcoded-commands.diff b/debian/patches/ada-replace-hardcoded-commands.diff
+new file mode 100644
+index 0000000..33c033d
+--- /dev/null
++++ b/debian/patches/ada-replace-hardcoded-commands.diff
+@@ -0,0 +1,110 @@
++From 8440db955b274472234071f79a35b504e96dc3d1 Mon Sep 17 00:00:00 2001
++From: Nicolas Boulenguez <nicolas@debian.org>
++Date: Mon, 23 Jun 2025 00:37:35 +0200
++Subject: [PATCH] Ada: Replace hardcoded GNAT commands for GNAT tools
++
++This replaces the hardcoded gnat{make,link,bind,ls} commands with expansion
++of the GNAT{MAKE,BIND} variables computed by the configure machinery, during
++the build of the GNAT tools.
++
++The default GNATMAKE_FOR_HOST duplicates the default GNATMAKE, and someone
++setting GNATMAKE in the toplevel configuration may want it applied for all
++host compilations.  Direct assignment of GNATMAKE_FOR_HOST keeps working.
++
++gcc/ada/
++	PR ada/120106
++	* gcc-interface/Make-lang.in: Set GNAT{MAKE,BIND,LINK_LS}_FOR_HOST
++	from GNAT{MAKE,BIND} instead of using hardcoded commands.
++gnattools/
++	PR ada/120106
++	* configure.ac: Remove ACX_NONCANONICAL_HOST and add ACX_PROG_GNAT.
++	* configure: Regenerate.
++	* Makefile.in: Do not substitute host_noncanonical but substitute
++	GNATMAKE and GNATBIND.
++	Set GNAT{MAKE,BIND,LINK_LS}_FOR_HOST from GNAT{MAKE,BIND} instead
++	of using hardcoded commands.
++---
++ gcc/ada/gcc-interface/Make-lang.in |  17 +-
++ gnattools/Makefile.in              |  19 +-
++ gnattools/configure                | 915 ++++++++++++++++++++++++++---
++ gnattools/configure.ac             |   2 +-
++ 4 files changed, 855 insertions(+), 98 deletions(-)
++
++diff --git a/src/gcc/ada/gcc-interface/Make-lang.in b/src/gcc/ada/gcc-interface/Make-lang.in
++index 54496ea75a6bf..87942c47c41e5 100644
++--- a/src/gcc/ada/gcc-interface/Make-lang.in
+++++ b/src/gcc/ada/gcc-interface/Make-lang.in
++@@ -185,6 +185,11 @@ ada.serial = gnat1$(exeext)
++ # variable conveys what we need for this, set to "g++" if not bootstrapping,
++ # ".../xg++" otherwise.
++
+++GNATMAKE_FOR_HOST = $(GNATMAKE)
+++GNATBIND_FOR_HOST = $(GNATBIND)
+++GNATLINK_FOR_HOST = $(subst gnatmake,gnatlink,$(GNATMAKE))
+++GNATLS_FOR_HOST   = $(subst gnatmake,gnatls,$(GNATMAKE))
+++
++ # There are too many Ada sources to check against here.  Let's
++ # always force the recursive make.
++ ifeq ($(build), $(host))
++@@ -214,20 +219,16 @@ ifeq ($(build), $(host))
++         CXX="$(CXX)" \
++         $(COMMON_FLAGS_TO_PASS) $(ADA_FLAGS_TO_PASS) \
++         ADA_INCLUDES="-I../generated -I$(RTS_DIR)/../adainclude -I$(RTS_DIR)" \
++-        GNATMAKE="gnatmake" \
++-        GNATBIND="gnatbind" \
++-        GNATLINK="gnatlink" \
+++        GNATMAKE="$(GNATMAKE_FOR_HOST)" \
+++        GNATBIND="$(GNATBIND_FOR_HOST)" \
+++        GNATLINK="$(GNATLINK_FOR_HOST)" \
++         LIBGNAT=""
++   endif
++ else
++   # Build is different from host so we are either building a canadian cross
++   # or a cross-native compiler. We provide defaults for tools targeting the
++-  # host platform, but they can be overriden by just setting <tool>_FOR_HOST
+++  # host platform, but they can be overridden by just setting <tool>_FOR_HOST
++   # variables.
++-  GNATMAKE_FOR_HOST=$(host_noncanonical)-gnatmake
++-  GNATBIND_FOR_HOST=$(host_noncanonical)-gnatbind
++-  GNATLINK_FOR_HOST=$(host_noncanonical)-gnatlink
++-  GNATLS_FOR_HOST=$(host_noncanonical)-gnatls
++
++   ifeq ($(host), $(target))
++     # This is a cross native. All the sources are taken from the currently
++diff --git a/src/gnattools/Makefile.in b/src/gnattools/Makefile.in
++index 996e600c196e8..98f1f75bdccaa 100644
++--- a/src/gnattools/Makefile.in
+++++ b/src/gnattools/Makefile.in
++@@ -33,7 +33,8 @@ INSTALL_PROGRAM = @INSTALL_PROGRAM@
++ # Nonstandard autoconf-set variables.
++ LN_S=@LN_S@
++ target_noncanonical=@target_noncanonical@
++-host_noncanonical=@host_noncanonical@
+++GNATMAKE=@GNATMAKE@
+++GNATBIND=@GNATBIND@
++
++ # Variables for the user (or the top level) to override.
++ exeext = @EXEEXT@
++@@ -115,17 +116,11 @@ TOOLS_FLAGS_TO_PASS_RE= \
++ 	"TOOLSCASE=cross"
++
++ # Variables for gnattools, cross
++-ifeq ($(build), $(host))
++-  GNATMAKE_FOR_HOST=gnatmake
++-  GNATLINK_FOR_HOST=gnatlink
++-  GNATBIND_FOR_HOST=gnatbind
++-  GNATLS_FOR_HOST=gnatls
++-else
++-  GNATMAKE_FOR_HOST=$(host_noncanonical)-gnatmake
++-  GNATLINK_FOR_HOST=$(host_noncanonical)-gnatlink
++-  GNATBIND_FOR_HOST=$(host_noncanonical)-gnatbind
++-  GNATLS_FOR_HOST=$(host_noncanonical)-gnatls
++-endif
+++# See configure.ac for what "cross" means here.
+++GNATMAKE_FOR_HOST = $(GNATMAKE)
+++GNATBIND_FOR_HOST = $(GNATBIND)
+++GNATLINK_FOR_HOST = $(subst gnatmake,gnatlink,$(GNATMAKE))
+++GNATLS_FOR_HOST   = $(subst gnatmake,gnatls,$(GNATMAKE))
++
++ # Put the host RTS dir first in the PATH to hide the default runtime
++ # files that are among the sources
+diff --git a/debian/patches/ada-verbose.diff b/debian/patches/ada-verbose.diff
+index 580e43f..be0278e 100644
+--- a/debian/patches/ada-verbose.diff
++++ b/debian/patches/ada-verbose.diff
+@@ -9,8 +9,8 @@ Author: Nicolas Boulenguez <nicolas@debian.org>
+  ada/seinfo_tables.ads ada/seinfo_tables.adb ada/sinfo.h ada/einfo.h ada/nmake.ads ada/nmake.adb ada/seinfo.ads ada/sinfo-nodes.ads ada/sinfo-nodes.adb ada/einfo-entities.ads ada/einfo-entities.adb: ada/stamp-gen_il ; @true
+  ada/stamp-gen_il: $(fsrcdir)/ada/gen_il*
+  	$(MKDIR) ada/gen_il
+--	cd ada/gen_il; $(GNATMAKE) -q -g $(GEN_IL_FLAGS) gen_il-main
+-+	cd ada/gen_il; $(GNATMAKE) -v -g $(GEN_IL_FLAGS) gen_il-main
++-	cd ada/gen_il; gnatmake -q -g $(GEN_IL_FLAGS) gen_il-main
+++	cd ada/gen_il; gnatmake -v -g $(GEN_IL_FLAGS) gen_il-main
+  	# Ignore errors to work around finalization issues in older compilers
+  	- cd ada/gen_il; ./gen_il-main
+  	$(fsrcdir)/../move-if-change ada/gen_il/seinfo_tables.ads ada/seinfo_tables.ads
+@@ -18,8 +18,8 @@ Author: Nicolas Boulenguez <nicolas@debian.org>
+  	-$(MKDIR) ada/bldtools/snamest
+  	$(RM) $(addprefix ada/bldtools/snamest/,$(notdir $^))
+  	$(CP) $^ ada/bldtools/snamest
+--	cd ada/bldtools/snamest && $(GNATMAKE) -q xsnamest && ./xsnamest
+-+	cd ada/bldtools/snamest && $(GNATMAKE) -v xsnamest && ./xsnamest
++-	cd ada/bldtools/snamest && gnatmake -q xsnamest && ./xsnamest
+++	cd ada/bldtools/snamest && gnatmake -v xsnamest && ./xsnamest
+  	$(fsrcdir)/../move-if-change ada/bldtools/snamest/snames.ns ada/snames.ads
+  	$(fsrcdir)/../move-if-change ada/bldtools/snamest/snames.nb ada/snames.adb
+  	$(fsrcdir)/../move-if-change ada/bldtools/snamest/snames.nh ada/snames.h
+diff --git a/debian/rules2 b/debian/rules2
+index a463bac..1097c3a 100644
+--- a/debian/rules2
++++ b/debian/rules2
+@@ -115,6 +115,15 @@ ifeq ($(with_ada),yes)
+ 	/usr/bin/$(DEB_HOST_GNU_TYPE)-gnat-9 \
+ 	/usr/bin/$(DEB_HOST_GNU_TYPE)-gnat-8 \
+ 	/usr/bin/$(DEB_HOST_GNU_TYPE)-gnat)))
++  GNAT_FOR_BUILD = $(notdir $(firstword $(wildcard \
++	/usr/bin/$(DEB_BUILD_GNU_TYPE)-gnat-14 \
++	/usr/bin/$(DEB_BUILD_GNU_TYPE)-gnat-13 \
++	/usr/bin/$(DEB_BUILD_GNU_TYPE)-gnat-12 \
++	/usr/bin/$(DEB_BUILD_GNU_TYPE)-gnat-11 \
++	/usr/bin/$(DEB_BUILD_GNU_TYPE)-gnat-10 \
++	/usr/bin/$(DEB_BUILD_GNU_TYPE)-gnat-9 \
++	/usr/bin/$(DEB_BUILD_GNU_TYPE)-gnat-8 \
++	/usr/bin/$(DEB_BUILD_GNU_TYPE)-gnat)))
+   ifneq (,$(GNAT))
+     CC = $(subst gnat,gcc,$(GNAT))
+   else ifneq (,$(filter $(distrelease), trusty))
+@@ -128,6 +137,8 @@ ifeq ($(with_ada),yes)
+   GDC = $(subst gcc,gdc,$(CC))
+   GNATBIND = $(subst gnat,gnatbind,$(GNAT))
+   GNATMAKE = $(subst gnat,gnatmake,$(GNAT))
++  GNATBIND_FOR_BUILD = $(subst gnat,gnatbind,$(GNAT_FOR_BUILD))
++  GNATMAKE_FOR_BUILD = $(subst gnat,gnatmake,$(GNAT_FOR_BUILD))
+ endif
+ 
+ ifneq (,$(filter $(build_type),cross-build-native cross-build-cross))
+@@ -1318,8 +1329,8 @@ endif
+ 	done
+ ifeq ($(with_ada),yes)
+ 	: # gnat still needs the unversioned gnatmake and gnatbind
+-	ln -sf /usr/bin/$(GNATBIND) bin/gnatbind
+-	ln -sf /usr/bin/$(GNATMAKE) bin/gnatmake
++	ln -sf /usr/bin/$(GNATBIND_FOR_BUILD) bin/gnatbind
++	ln -sf /usr/bin/$(GNATMAKE_FOR_BUILD) bin/gnatmake
+ endif
+ 
+ 	: # configure
+EOF
+
+    drop_privs tee -a debian/rules.patch >/dev/null <<'EOF'
+ifeq ($(with_ada),yes)
+    debian_patches += ada-replace-hardcoded-commands
+endif
+EOF
+}
 patch_gcc_14() {
 	patch_gcc_limits_h_test
 	patch_gcc_for_host_in_rtlibs
 	patch_gcc_default_pie_everywhere
 	patch_gcc_wdotap
+	patch_gcc_ada
 }
 buildenv_gcc_14() {
 	echo "ignoring symbol differences #1085155"
@@ -2587,7 +2811,7 @@ EOF
 -	  mv $(debian-tmp)/usr/include/finclude/math-vector-fortran.h $(debian-tmp)/usr/include/finclude/$(DEB_HOST_MULTIARCH); \
 +	  mv $(debian-tmp)/usr/include/$(DEB_HOST_MULTIARCH)/finclude/math-vector-fortran.h $(debian-tmp)/usr/include/finclude/$(DEB_HOST_MULTIARCH); \
  	fi
- 
+
  	ifeq ($(filter stage1,$(DEB_BUILD_PROFILES)),)
 --- a/debian/sysdeps/hurd-i386.mk
 +++ b/debian/sysdeps/hurd-i386.mk
@@ -2599,7 +2823,7 @@ EOF
 -mv $(debian-tmp)/usr/include/mach/i386 $(debian-tmp)/usr/include/$(DEB_HOST_MULTIARCH)/mach/
 -ln -s ../$(DEB_HOST_MULTIARCH)/mach/i386 $(debian-tmp)/usr/include/mach/i386
  endef
- 
+
  # FIXME: We are having runtime issues with ifunc...
 EOF
 }
@@ -3670,7 +3894,7 @@ progress_mark "$LIBC_NAME stage2 cross build"
 if test -f "$REPODIR/stamps/gcc_3"; then
 	echo "skipping rebuild of gcc stage3"
 else
-	apt_get_install debhelper gawk patchutils bison flex lsb-release quilt libtool $GCC_AUTOCONF zlib1g-dev libmpc-dev libmpfr-dev libgmp-dev dejagnu systemtap-sdt-dev sharutils "binutils$HOST_ARCH_SUFFIX" time
+	apt_get_install debhelper gawk patchutils bison flex lsb-release quilt libtool $GCC_AUTOCONF zlib1g-dev libmpc-dev libmpfr-dev libgmp-dev dejagnu systemtap-sdt-dev sharutils "binutils$HOST_ARCH_SUFFIX" time gnat gdc
 	if test "$HOST_ARCH" = hppa; then
 		apt_get_install binutils-hppa64-linux-gnu
 	fi
@@ -3709,8 +3933,8 @@ else
 	pickup_packages *.changes
 	# avoid file conflicts between differently staged M-A:same packages
 	apt_get_remove "gcc-$GCC_VER-base:$HOST_ARCH"
-	drop_privs rm -fv gcc-*-plugin-*.deb gcj-*.deb gdc-*.deb ./*objc*.deb ./*-dbg_*.deb
-	dpkg -i *.deb
+	drop_privs rm -fv gcc-*-plugin-*.deb gcj-*.deb gdc-*.deb *gphobos*.deb *gnat*.deb ./*objc*.deb ./*-dbg_*.deb
+	apt_get_install ./*.deb
 	compiler="$(dpkg-architecture "-a$HOST_ARCH" -qDEB_HOST_GNU_TYPE)-gcc-$GCC_VER"
 	if ! command -v "$compiler" >/dev/null; then echo "$compiler missing in stage3 gcc package"; exit 1; fi
 	if ! drop_privs "$compiler" -x c -c /dev/null -o test.o; then echo "stage3 gcc fails to execute"; exit 1; fi
@@ -4297,19 +4521,17 @@ else
 		export DEB_BUILD_OPTIONS="$DEB_BUILD_OPTIONS${nolang:+ nolang=$(join_words , $nolang)}"
 		hook=$(get_hook buildenv "gcc-$GCC_VER") && "$hook" "$HOST_ARCH"
 		export GCC_TARGET="$HOST_ARCH"
+		export gcc_cv_libc_provides_ssp=yes
+		export gcc_cv_initfini_array=yes
 		drop_privs dpkg-buildpackage -a"$HOST_ARCH" -d -T control
 		drop_privs dpkg-buildpackage -a"$HOST_ARCH" -d -T clean
-		fake_install_package "gnat-$GCC_VER"
-		fake_install_package "gdc-$GCC_VER"
 		fake_install_package "cargo"
-		for i in gobjc gdc gccgo gnat gm2 gcobol ga68; do
+		for i in gobjc gccgo gm2 gcobol ga68; do
 			fake_install_package "$i-$GCC_VER-for-host"
 		done
 		apt_get_build_dep "-a$HOST_ARCH" --arch-only -P nocheck,nodoc,cross ./
-		fake_remove_package "gnat-$GCC_VER"
-		fake_remove_package "gdc-$GCC_VER"
 		fake_remove_package "cargo"
-		for i in gobjc gdc gccgo gnat gm2 gcobol ga68; do
+		for i in gobjc gccgo gm2 gcobol ga68; do
 			fake_remove_package "$i-$GCC_VER-for-host"
 		done
 		drop_privs dpkg-buildpackage "-a$HOST_ARCH" -d -B -Pnocheck,nodoc -uc -us
