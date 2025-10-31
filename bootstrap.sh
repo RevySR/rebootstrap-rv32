@@ -3993,6 +3993,45 @@ fi
 progress_mark "gcc cross rtlibs build"
 fi
 
+if test -f "$REPODIR/stamps/crossbuild-essential"; then
+	echo "skipping rebuild of crossbuild-essential-$HOST_ARCH"
+else
+	cross_build_setup build-essential crossbuild-essential
+	check_binNMU
+	apt_get_build_dep --indep-only ./
+	echo "$HOST_ARCH" | drop_privs tee debian/cross-targets >/dev/null
+	(
+		drop_privs dpkg-buildpackage -T debian/control
+		drop_privs_exec dpkg-buildpackage -A -us -uc
+	)
+	cd ..
+	ls -l
+	reprepro include rebootstrap-native ./*.changes
+	cd ..
+	drop_privs rm -Rf crossbuild-essential
+	touch "$REPODIR/stamps/crossbuild-essential"
+fi
+progress_mark "crossbuild-essential-$HOST_ARCH build"
+
+if test -f "$REPODIR/stamps/gcc-defaults-ports"; then
+	echo "skipping rebuild of gcc-defaults-ports for compilers targeting $HOST_ARCH"
+else
+	cross_build_setup gcc-defaults-ports gcc-defaults-ports
+	check_binNMU
+	apt_get_build_dep --indep-only ./
+	(
+		export CROSS_ARCHS="$HOST_ARCH"
+		drop_privs_exec dpkg-buildpackage -B -us -uc
+	)
+	cd ..
+	ls -l
+	reprepro include rebootstrap-native ./*.changes
+	cd ..
+	drop_privs rm -Rf gcc-defaults-ports
+	touch "$REPODIR/stamps/gcc-defaults-ports"
+fi
+progress_mark "gcc-defaults-ports for compilers targeting $HOST_ARCH build"
+
 # install something similar to crossbuild-essential
 apt_get_install "binutils$HOST_ARCH_SUFFIX" "gcc-$GCC_VER$HOST_ARCH_SUFFIX" "g++-$GCC_VER$HOST_ARCH_SUFFIX" "libc-dev:$HOST_ARCH"
 
