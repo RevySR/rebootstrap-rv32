@@ -3173,7 +3173,7 @@ patch_linux() {
 	local kernel_arch
 	kernel_arch=
 	cat - debian/changelog <<EOF |
-linux ($(dpkg-parsechangelog -SVersion)+rebootstrap1) $SUITE; urgency=medium
+linux ($(dpkg-parsechangelog -SVersion)+rebootstrap1) sid; urgency=medium
 
   * Update for $HOST_ARCH
 
