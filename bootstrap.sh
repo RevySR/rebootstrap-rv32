@@ -2471,6 +2471,7 @@ patch_gcc_wdotap() {
 EOF
 	fi
 }
+
 patch_gcc_ada() {
 	drop_privs patch -p1 <<'EOF'
 diff --git a/debian/patches/ada-gnat-name.diff b/debian/patches/ada-gnat-name.diff
@@ -2694,12 +2695,58 @@ ifeq ($(with_ada),yes)
 endif
 EOF
 }
+
+patch_gcc_riscv32() {
+	test "$HOST_ARCH" = riscv32 || return 0
+	echo "riscv32 no multilib"
+	echo "riscv32 enable default pie & time64t & enable libphobos"
+	drop_privs patch -p1 <<'EOF'
+diff -uNr gcc-14-14.2.0.orig/debian/rules2 gcc-14-14.2.0/debian/rules2
+--- gcc-14-14.2.0.orig/debian/rules2	2025-02-19 23:04:38.000000000 +0800
++++ gcc-14-14.2.0/debian/rules2	2026-01-03 02:05:29.171609220 +0800
+@@ -625,6 +625,11 @@
+   CONFARGS += --with-arch=rv64gc --with-abi=lp64d
+ endif
+ 
++ifneq (,$(findstring riscv32-linux,$(DEB_TARGET_GNU_TYPE)))
++  CONFARGS += --disable-multilib
++  CONFARGS += --with-arch=rv32gcv_zba_zbb_zbc_zbs --with-abi=ilp32d
++endif
++
+ ifneq (,$(findstring s390x-linux,$(DEB_TARGET_GNU_TYPE)))
+   ifeq ($(derivative),Ubuntu)
+     ifneq (,$(filter $(distrelease),xenial bionic focal))
+diff -uNr gcc-14-14.2.0.orig/debian/rules.defs gcc-14-14.2.0/debian/rules.defs
+--- gcc-14-14.2.0.orig/debian/rules.defs	2025-01-15 22:52:38.000000000 +0800
++++ gcc-14-14.2.0/debian/rules.defs	2026-01-03 02:04:34.000289737 +0800
+@@ -522,7 +522,7 @@
+   endif
+ endif
+ 
+-timet64_archs = armel armhf hppa m68k mips mipsel powerpc sh4
++timet64_archs = armel armhf hppa m68k mips mipsel powerpc riscv32 sh4
+ no_timet64_distreleases = jessy stretch buster bullseye bookworm \
+ 	precise trusty xenial bionic focal jammy kinetic lunar mantic
+ 
+@@ -1082,7 +1082,7 @@
+   phobos_archs += mips mips64 mipsel mips64el
+   phobos_archs += mipsn32 mipsn32el
+   phobos_archs += mipsr6 mipsr6el mipsn32r6 mipsn32r6el mips64r6 mips64r6el
+-  phobos_archs += riscv64 s390x loong64
++  phobos_archs += riscv32 riscv64 s390x loong64
+   phobos_archs += $(druntime_only_archs)
+   ifneq (,$(filter $(DEB_TARGET_ARCH), $(phobos_archs)))
+     with_phobos := yes
+EOF
+}
+
 patch_gcc_14() {
 	patch_gcc_limits_h_test
 	patch_gcc_for_host_in_rtlibs
 	patch_gcc_default_pie_everywhere
 	patch_gcc_wdotap
 	patch_gcc_ada
+	patch_gcc_riscv32
 }
 buildenv_gcc_14() {
 	echo "ignoring symbol differences #1085155"
