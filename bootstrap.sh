@@ -937,6 +937,45 @@ buildenv_diffutils() {
 }
 
 add_automatic dpkg
+patch_dpkg() {
+	if test "$HOST_ARCH" = riscv32; then
+        	echo "patching dpkg to support riscv32"
+			echo "builtin pie for riscv32, need gcc support it."
+               	drop_privs patch -p1  <<'EOF'
+diff -uNr dpkg-1.22.21.orig/data/cputable dpkg-1.22.21/data/cputable
+--- dpkg-1.22.21.orig/data/cputable	2025-07-01 07:04:41.000000000 +0800
++++ dpkg-1.22.21/data/cputable	2026-01-03 01:41:15.075993069 +0800
+@@ -43,6 +43,7 @@
+ powerpcel	powerpcle	powerpcle		32	little
+ ppc64		powerpc64	(powerpc|ppc)64		64	big
+ ppc64el		powerpc64le	powerpc64le		64	little
++riscv32		riscv32		riscv32			32	little
+ riscv64		riscv64		riscv64			64	little
+ s390		s390		s390			32	big
+ s390x		s390x		s390x			64	big
+diff -uNr dpkg-1.22.21.orig/scripts/Dpkg/Vendor/Debian.pm dpkg-1.22.21/scripts/Dpkg/Vendor/Debian.pm
+--- dpkg-1.22.21.orig/scripts/Dpkg/Vendor/Debian.pm	2025-07-01 07:04:41.000000000 +0800
++++ dpkg-1.22.21/scripts/Dpkg/Vendor/Debian.pm	2026-01-03 01:39:51.865138261 +0800
+@@ -217,6 +217,7 @@
+         powerpc
+         ppc64
+         ppc64el
++	riscv32
+         riscv64
+         s390x
+         sparc
+@@ -256,6 +257,7 @@
+         powerpc
+         powerpcel
+         powerpcspe
++        riscv32
+         s390
+         sh3
+         sh3eb
+EOF
+	fi
+}
+
 add_automatic e2fsprogs
 add_automatic expat
 add_automatic file
