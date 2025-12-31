@@ -965,6 +965,33 @@ add_automatic fontconfig
 add_automatic freetype
 add_automatic fribidi
 add_automatic fuse3
+buildenv_fuse3() {
+	case "$(dpkg-architecture "-a$HOST_ARCH" -qDEB_HOST_ARCH_CPU)" in
+		arc|mips|mipsel|sh3|sh4|sparc|riscv32)
+			echo "enabling -latomic #1105150"
+			export DEB_LDFLAGS_APPEND="-Wl,--as-needed -latomic"
+		;;
+	esac
+}
+
+patch_fuse3() {
+	if test "$HOST_ARCH" = riscv32; then
+        	echo "patching fuse3 to support riscv32"
+               	drop_privs patch -p1  <<'EOF'
+diff -uNr fuse3-3.17.2.orig/debian/rules fuse3-3.17.2/debian/rules
+--- fuse3-3.17.2.orig/debian/rules	2025-05-20 02:39:08.000000000 +0800
++++ fuse3-3.17.2/debian/rules	2026-01-01 16:26:13.799470055 +0800
+@@ -10,7 +10,7 @@
+ 
+ export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+ 
+-ifneq (,$(filter $(DEB_HOST_ARCH), arc armel m68k mips mipsel powerpc sh3 sh4 sparc))
++ifneq (,$(filter $(DEB_HOST_ARCH), arc armel m68k mips mipsel powerpc sh3 sh4 sparc riscv32))
+    export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed -latomic
+ endif
+EOF
+	fi
+}
 
 patch_gcc_default_pie_everywhere()
 {
