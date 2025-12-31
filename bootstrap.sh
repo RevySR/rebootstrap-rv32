@@ -3167,6 +3167,29 @@ add_automatic libxau
 add_automatic libxaw
 add_automatic libxcb
 add_automatic libxcrypt
+patch_libxcrypt() {
+	echo "do not abuse Important and Protected fields #1024616"
+	drop_privs sed -i -e '/\(Important\|Protected\):/d' debian/control
+	if test "$HOST_ARCH" = riscv32; then
+        	echo "patching libxcrypt to support riscv32"
+               	drop_privs patch -p1  <<'EOF'
+--- /dev/null
++++ b/debian/libcrypt1.symbols.riscv32
+@@ -0,0 +1,10 @@
++libcrypt.so.1 libcrypt1 #MINVER#
++#include "libcrypt1.symbols.common"
++ GLIBC_2.33@GLIBC_2.33 1:4.4.38-1
++ crypt@GLIBC_2.33 1:4.4.38-1
++ crypt_r@GLIBC_2.33 1:4.4.38-1
++ encrypt@GLIBC_2.33 1:4.4.38-1
++ encrypt_r@GLIBC_2.33 1:4.4.38-1
++ fcrypt@GLIBC_2.33 1:4.4.38-1
++ setkey@GLIBC_2.33 1:4.4.38-1
++ setkey_r@GLIBC_2.33 1:4.4.38-1
+EOF
+	fi
+}
+
 add_automatic libxdmcp
 
 add_automatic libxext
