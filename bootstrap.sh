@@ -2663,14 +2663,14 @@ patch_gcc_riscv32() {
 	drop_privs patch -p1 <<'EOF'
 diff -uNr gcc-14-14.2.0.orig/debian/rules2 gcc-14-14.2.0/debian/rules2
 --- gcc-14-14.2.0.orig/debian/rules2	2025-02-19 23:04:38.000000000 +0800
-+++ gcc-14-14.2.0/debian/rules2	2025-05-31 02:19:19.639953313 +0800
++++ gcc-14-14.2.0/debian/rules2	2026-01-01 02:24:22.541640105 +0800
 @@ -625,6 +625,11 @@
    CONFARGS += --with-arch=rv64gc --with-abi=lp64d
  endif
  
 +ifneq (,$(findstring riscv32-linux,$(DEB_TARGET_GNU_TYPE)))
 +  CONFARGS += --disable-multilib
-+  CONFARGS += --with-arch=rv32gc --with-abi=ilp32d
++  CONFARGS += --with-arch=rv32gcv_zba_zbb_zbs --with-abi=lp64d
 +endif
 +
  ifneq (,$(findstring s390x-linux,$(DEB_TARGET_GNU_TYPE)))
@@ -2678,7 +2678,7 @@ diff -uNr gcc-14-14.2.0.orig/debian/rules2 gcc-14-14.2.0/debian/rules2
      ifneq (,$(filter $(distrelease),xenial bionic focal))
 diff -uNr gcc-14-14.2.0.orig/debian/rules.defs gcc-14-14.2.0/debian/rules.defs
 --- gcc-14-14.2.0.orig/debian/rules.defs	2025-01-15 22:52:38.000000000 +0800
-+++ gcc-14-14.2.0/debian/rules.defs	2025-05-31 15:23:29.539150802 +0800
++++ gcc-14-14.2.0/debian/rules.defs	2026-01-01 02:25:25.604961279 +0800
 @@ -1431,7 +1431,7 @@
  		mips mipsel mips64 mips64el mipsn32 mipsn32el \
  		mipsr6 mipsr6el mips64r6 mips64r6el mipsn32r6 mipsn32r6el \
