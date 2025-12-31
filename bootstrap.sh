@@ -805,7 +805,7 @@ EOF
 	echo "fix honouring of nocheck option #990794"
 	drop_privs sed -i -e 's/ifeq (\(,$(filter $(DEB_HOST_ARCH),\)/ifneq ($(DEB_BUILD_ARCH)\1/' debian/rules
 	case "$HOST_ARCH" in
-		loong64|sparc)
+		loong64|sparc|riscv32)
 			echo "enabling uncommon architectures in debian/control"
 			drop_privs sed -i -e "/^#NATIVE_ARCHS +=/aNATIVE_ARCHS += $HOST_ARCH" debian/rules
 			regenerate_control=1
