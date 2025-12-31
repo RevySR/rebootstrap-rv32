@@ -1309,7 +1309,7 @@ patch_gcc_for_host_in_rtlibs() {
 -TARGET_PACKAGE`'dnl
 -Multi-Arch: same
 -Depends: BASEDEP, gobjc`'PV`'${target:suffix} (>= ${gcc:SoftVersion}),
--  gcc`'PV`'-for-host (= ${gcc:Version}), ${misc:Depends}
+-  gobjc`'PV`'-for-host (= ${gcc:Version}), ${misc:Depends}
 -BUILT_USING`'dnl
 -Description: GNU Objective-C compiler for the host architecture
 - This is the GNU Objective-C compiler for the host architecture,
@@ -1332,7 +1332,7 @@ patch_gcc_for_host_in_rtlibs() {
 +TARGET_PACKAGE`'dnl
 +Multi-Arch: same
 +Depends: BASEDEP, gobjc`'PV`'${target:suffix} (>= ${gcc:SoftVersion}),
-+  gcc`'PV`'-for-host (= ${gcc:Version}), ${misc:Depends}
++  gobjc`'PV`'-for-host (= ${gcc:Version}), ${misc:Depends}
 +BUILT_USING`'dnl
 +Description: GNU Objective-C compiler for the host architecture
 + This is the GNU Objective-C compiler for the host architecture,
