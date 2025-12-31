@@ -2903,6 +2903,10 @@ add_automatic libdebian-installer
 add_automatic libev
 add_automatic libevent
 add_automatic libffi
+patch_libffi() {
+	echo "fix symbols for riscv32"
+	drop_privs sed -i '/)LIBFFI_COMPLEX_8\.0 /s/)/ !riscv32)/' debian/libffi8.symbols
+}
 
 add_automatic libgc
 buildenv_libgc() {
