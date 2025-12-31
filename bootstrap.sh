@@ -3377,6 +3377,28 @@ buildenv_openldap() {
 }
 
 add_automatic openssl
+patch_openssl() {
+	if test "$HOST_ARCH" = riscv32; then
+		echo "patching openssl to support riscv32"
+		drop_privs patch -p1  <<'EOF'
+diff -uNr openssl-3.5.0.orig/Configurations/20-debian.conf openssl-3.5.0/Configurations/20-debian.conf
+--- openssl-3.5.0.orig/Configurations/20-debian.conf	2025-05-31 02:24:26.000000000 +0800
++++ openssl-3.5.0/Configurations/20-debian.conf	2025-05-31 02:25:32.255756238 +0800
+@@ -124,6 +124,9 @@
+ 	"debian-ppc64el" => {
+ 		inherit_from => [ "linux-ppc64le", "debian" ],
+ 	},
++	"debian-riscv32" => {
++		inherit_from => [ "linux-latomic", "debian" ],
++	},
+ 	"debian-riscv64" => {
+ 		inherit_from => [ "linux64-riscv64", "debian" ],
+ 	},
+
+EOF
+	fi
+}
+
 add_automatic p11-kit
 
 builddep_pam() {
