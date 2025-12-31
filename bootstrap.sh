@@ -4184,6 +4184,200 @@ else
 	apt_get_build_dep --indep-only ./
 	(
 		export CROSS_ARCHS="$HOST_ARCH"
+		drop_privs patch -p1 <<'EOF'
+diff -uNr gcc-defaults-ports-1.220.orig/debian/control gcc-defaults-ports-1.220/debian/control
+--- gcc-defaults-ports-1.220.orig/debian/control	2024-09-23 01:33:59.000000000 +0800
++++ gcc-defaults-ports-1.220/debian/control	2026-01-01 03:37:51.110164010 +0800
+@@ -1964,3 +1964,162 @@
+  This is a dependency package providing the default GNU D cross-compiler
+  for the x32 architecture.
+ 
++Package: cpp-riscv32-linux-gnu
++Priority: optional
++Architecture:  amd64 arm64 riscv64
++Multi-Arch: foreign
++Section: interpreters
++Depends: cpp-${pv:cpp}-riscv32-linux-gnu ${reqv:cpp}, ${misc:Depends}
++Breaks: cpp (<< 4:13.2.0-3)
++Replaces: cpp (<< 4:13.2.0-3)
++Suggests: cpp-doc
++Description: GNU C preprocessor (cpp) for the riscv32 architecture
++ The GNU C preprocessor is a macro processor that is used automatically
++ by the GNU C compiler to transform programs before actual compilation.
++ .
++ This package has been separated from gcc for the benefit of those who
++ require the preprocessor but not the cross-compiler for riscv32 architecture.
++ .
++ This is a dependency package providing the default GNU C preprocessor
++ for the riscv32 architecture.
++
++Package: gcc-riscv32-linux-gnu
++Priority: optional
++Architecture:  amd64 arm64 riscv64
++Multi-Arch: foreign
++Depends: cpp-riscv32-linux-gnu (= ${version:cpp}),
++  gcc-${pv:gcc}-riscv32-linux-gnu ${reqv:gcc},
++  ${misc:Depends}
++Breaks: gcc (<< 4:13.2.0-3)
++Replaces: gcc (<< 4:13.2.0-3)
++Recommends: ${gcc-riscv32-linux-gnu:recommends}
++Suggests: make, manpages-dev, autoconf, automake, libtool, flex, bison, gdb-riscv32-linux-gnu, gcc-doc
++Description: GNU C compiler for the riscv32 architecture
++ This is the GNU C compiler, a fairly portable optimizing compiler for C.
++ .
++ This is a dependency package providing the default GNU C cross-compiler
++ for the riscv32 architecture.
++
++Package: g++-riscv32-linux-gnu
++Priority: optional
++Architecture:  amd64 arm64 riscv64
++Multi-Arch: foreign
++Depends: cpp-riscv32-linux-gnu (= ${version:cpp}),
++  gcc-riscv32-linux-gnu (= ${version:cpp}),
++  g++-${pv:gpp}-riscv32-linux-gnu ${reqv:gpp},
++  ${misc:Depends}
++Breaks: g++ (<< 4:13.2.0-3)
++Replaces: g++ (<< 4:13.2.0-3)
++Description: GNU C++ compiler for the riscv32 architecture
++ This is the GNU C++ compiler, a fairly portable optimizing compiler for C++.
++ .
++ This is a dependency package providing the default GNU C++ cross-compiler
++ for the riscv32 architecture.
++
++Package: gobjc-riscv32-linux-gnu
++Priority: optional
++Architecture:  amd64 arm64 riscv64
++Multi-Arch: foreign
++Depends: cpp-riscv32-linux-gnu (>= ${version:cpp}),
++  gcc-riscv32-linux-gnu (>= ${version:cpp}),
++  gobjc-${pv:gobjc}-riscv32-linux-gnu ${reqv:gobjc},
++  ${misc:Depends}
++Breaks: gobjc (<< 4:13.2.0-3)
++Replaces: gobjc (<< 4:13.2.0-3)
++Description: GNU Objective-C compiler for the riscv32 architecture
++ This is the GNU Objective-C compiler, which compiles Objective-C on platforms
++ supported by the gcc compiler. It uses the gcc backend to generate optimized
++ code.
++ .
++ This is a dependency package providing the default GNU Objective-C
++ cross-compiler for the riscv32 architecture.
++
++Package: gobjc++-riscv32-linux-gnu
++Priority: optional
++Architecture:  amd64 arm64 riscv64
++Multi-Arch: foreign
++Depends: cpp-riscv32-linux-gnu (>= ${version:cpp}),
++  gcc-riscv32-linux-gnu (>= ${version:cpp}),
++  gobjc++-${pv:gobjcxx}-riscv32-linux-gnu ${reqv:gobjcxx},
++  ${misc:Depends}
++Recommends: g++-riscv32-linux-gnu (>= ${version:cpp}), gobjc-riscv32-linux-gnu (>= ${version:cpp})
++Breaks: gobjc++ (<< 4:13.2.0-3)
++Replaces: gobjc++ (<< 4:13.2.0-3)
++Description: GNU Objective-C++ compiler for the riscv32 architecture
++ This is the GNU Objective-C++ compiler, which compiles
++ Objective-C++ on platforms supported by the gcc compiler. It uses the
++ gcc backend to generate optimized code.
++ .
++ This is a dependency package providing the default GNU Objective-C++
++ cross-compiler for the riscv32 architecture.
++
++Package: gfortran-riscv32-linux-gnu
++Priority: optional
++Architecture:  amd64 arm64 riscv64
++Multi-Arch: foreign
++Depends: cpp-riscv32-linux-gnu (= ${version:cpp}),
++  gcc-riscv32-linux-gnu (= ${version:gcc}),
++  gfortran-${pv:gfort}-riscv32-linux-gnu ${reqv:gfort},
++  ${misc:Depends}
++Suggests: gfortran-doc
++Breaks: gfortran (<< 4:13.2.0-3)
++Replaces: gfortran (<< 4:13.2.0-3)
++Description: GNU Fortran 95 compiler for the riscv32 architecture
++ This is the GNU Fortran 95 compiler, which compiles Fortran 95 on platforms
++ supported by the gcc compiler. It uses the gcc backend to generate optimized
++ code.
++ .
++ This is a dependency package providing the default GNU Fortran 95
++ cross-compiler for the riscv32 architecture.
++
++Package: gccgo-riscv32-linux-gnu
++Priority: optional
++Architecture:  amd64 arm64 riscv64
++Multi-Arch: foreign
++Depends: cpp-riscv32-linux-gnu (>= ${version:cpp}),
++  g++-riscv32-linux-gnu (>= ${version:gcc}),
++  gccgo-${pv:ggo}-riscv32-linux-gnu ${reqv:ggo},
++  ${misc:Depends}
++Suggests: gccgo-doc
++Breaks: gccgo (<< 4:13.2.0-3)
++Replaces: gccgo (<< 4:13.2.0-3)
++Description: Go compiler (based on GCC) for the riscv32 architecture
++ This is the GNU Go compiler, which compiles Go on platforms supported by
++ the gcc compiler. It uses the gcc backend to generate optimized code.
++ .
++ This is a dependency package providing the default GNU Go cross-compiler
++ for the riscv32 architecture.
++
++Package: gdc-riscv32-linux-gnu
++Priority: optional
++Architecture:  amd64 arm64 riscv64
++Multi-Arch: foreign
++Depends: cpp-riscv32-linux-gnu (>= ${version:cpp}),
++  gdc-${pv:gdc}-riscv32-linux-gnu ${reqv:gdc},
++  ${misc:Depends}
++Breaks: gdc (<< 4:13.2.0-3)
++Replaces: gdc (<< 4:13.2.0-3)
++Description: GNU D compiler (based on GCC) for the riscv32 architecture
++ This is the GNU D compiler, which compiles D on platforms supported by
++ the gcc compiler. It uses the gcc backend to generate optimized code.
++ .
++ This is a dependency package providing the default GNU D cross-compiler
++ for the riscv32 architecture.
++
++Package: gm2-riscv32-linux-gnu
++Priority: optional
++Architecture:  amd64 arm64 riscv64
++Multi-Arch: foreign
++Depends: cpp-riscv32-linux-gnu (= ${version:cpp}),
++  gm2-${pv:gm2}-riscv32-linux-gnu ${reqv:gm2},
++  ${misc:Depends}
++Breaks: gm2 (<< 4:13.2.0-3)
++Replaces: gm2 (<< 4:13.2.0-3)
++Description: GNU Modula-2 compiler (based on GCC) for the riscv32 architecture
++ This is the GNU Modula-2 compiler, which compiles Modula-2 on platforms
++ supported by the gcc compiler. It uses the gcc backend to generate optimized
++ code.
++ .
++ This is a dependency package providing the default GNU Modula-2 cross-compiler
++ for the riscv32 architecture.
++
+diff -uNr gcc-defaults-ports-1.220.orig/debian/rules gcc-defaults-ports-1.220/debian/rules
+--- gcc-defaults-ports-1.220.orig/debian/rules	2024-10-10 16:55:36.000000000 +0800
++++ gcc-defaults-ports-1.220/debian/rules	2026-01-01 03:37:45.030237569 +0800
+@@ -229,12 +229,12 @@
+ all_archs_mips = mips mipsel mipsn32 mipsn32el mips64 mips64el \
+ 	mipsr6 mipsr6el mipsn32r6 mipsn32r6el mips64r6 mips64r6el
+ all_archs  = alpha arc amd64 armel armhf arm64 hppa i386 ia64 m68k or1k \
+-	loong64 powerpc ppc64 ppc64el riscv64 s390 s390x sh4 sparc sparc64 x32 \
++	loong64 powerpc ppc64 ppc64el riscv64 s390 s390x sh4 sparc sparc64 x32 riscv32 \
+ 	hurd-amd64 hurd-i386 kfreebsd-amd64 kfreebsd-i386 \
+ 	$(all_archs_mips)
+ 
+ gcc13_archs =
+-gcc14_archs  = alpha arc amd64 armel armhf arm64 hppa i386 ia64 loong64 m68k or1k powerpc ppc64 ppc64el riscv64 s390 s390x sh4 sparc sparc64 x32 hurd-amd64 hurd-i386 kfreebsd-amd64 kfreebsd-i386 \
++gcc14_archs  = alpha arc amd64 armel armhf arm64 hppa i386 ia64 loong64 m68k or1k powerpc ppc64 ppc64el riscv64 s390 s390x sh4 sparc sparc64 x32 riscv32 hurd-amd64 hurd-i386 kfreebsd-amd64 kfreebsd-i386 \
+ 	     $(all_archs_mips)
+ 
+ gnat13_archs  =
+@@ -394,6 +394,7 @@
+   HOST_ARCHS_sh4 = amd64 arm64 i386 ppc64el x32
+   HOST_ARCHS_sparc64 = amd64 arm64 i386 ppc64el x32
+   HOST_ARCHS_x32 = amd64 arm64 i386 ppc64el
++  HOST_ARCHS_riscv32 = amd64 arm64 riscv64
+ else ifeq ($(SOURCE),gcc-defaults-mipsen)
+   $(foreach a, $(all_archs_mips), \
+     $(eval HOST_ARCHS_$(a) = $(filter-out $(a), $(mipsen_archs))) \
+EOF
 		drop_privs_exec dpkg-buildpackage -B -us -uc
 	)
 	cd ..
