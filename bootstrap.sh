@@ -3229,6 +3229,36 @@ EOF
 		echo "work around time64 abi duality build failure https://github.com/SELinuxProject/selinux/issues/476"
 		drop_privs sed -i -e '/^static_assert.*__ino_t/d' src/matchpathcon.c
 	fi
+
+	echo "for riscv32, patch to fix 32bit build"
+	# From: https://github.com/NixOS/nixpkgs/pull/391728
+	if test "$HOST_ARCH" = riscv32; then
+               	drop_privs patch -p1  <<'EOF'
+diff -uNr libselinux-3.8.1.orig/include/selinux/selinux.h libselinux-3.8.1/include/selinux/selinux.h
+--- libselinux-3.8.1.orig/include/selinux/selinux.h	2025-05-31 16:20:32.877431149 +0800
++++ libselinux-3.8.1/include/selinux/selinux.h	2025-05-31 16:20:48.349275139 +0800
+@@ -537,7 +537,7 @@
+    with the same inode (e.g. due to multiple hard links).  If so, then
+    use the latter of the two specifications based on their order in the 
+    file contexts configuration.  Return the used specification index. */
+-#if defined(_FILE_OFFSET_BITS) && _FILE_OFFSET_BITS == 64 && __BITS_PER_LONG < 64 && !defined(__x86_64__)
++#if defined(_FILE_OFFSET_BITS) && _FILE_OFFSET_BITS == 64 && !defined(__INO_T_MATCHES_INO64_T)
+ #define matchpathcon_filespec_add matchpathcon_filespec_add64
+ #endif
+ extern int matchpathcon_filespec_add(ino_t ino, int specind, const char *file);
+diff -uNr libselinux-3.8.1.orig/src/matchpathcon.c libselinux-3.8.1/src/matchpathcon.c
+--- libselinux-3.8.1.orig/src/matchpathcon.c	2025-05-31 16:20:32.877431149 +0800
++++ libselinux-3.8.1/src/matchpathcon.c	2025-05-31 16:20:48.349275139 +0800
+@@ -261,7 +261,7 @@
+ 	return -1;
+ }
+ 
+-#if defined(_FILE_OFFSET_BITS) && _FILE_OFFSET_BITS == 64 && __BITS_PER_LONG < 64 && !defined(__x86_64__)
++#if defined(_FILE_OFFSET_BITS) && _FILE_OFFSET_BITS == 64 && !defined(__INO_T_MATCHES_INO64_T)
+ /* alias defined in the public header but we undefine it here */
+ #undef matchpathcon_filespec_add
+EOF
+	fi
 }
 
 add_automatic libsepol
