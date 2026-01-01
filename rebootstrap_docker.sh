@@ -1,6 +1,7 @@
 
 DOCKER_IMAGE_NAME=debian:trixie_rebootstrap_rv32
-MIRROR=https://repo.revyos.rv64gc.org:8443/trixie32/revyos-base/
+MIRROR=https://mirror.bfsu.edu.cn/debian
+#https://repo.revyos.rv64gc.org:8443/trixie32/revyos-base/
 SUITE=trixie
 
 DIR=/rebootstrap
