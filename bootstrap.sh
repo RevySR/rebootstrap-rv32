@@ -2984,6 +2984,9 @@ EOF
 
 add_automatic grep
 add_automatic groff
+buildenv_groff() {
+	export DEB_BUILD_OPTIONS="nocheck noddebs parallel=1"
+}
 
 add_automatic gzip
 buildenv_gzip() {
