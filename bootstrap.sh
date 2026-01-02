@@ -6190,6 +6190,123 @@ add_need curl # by elfutils
 add_need nspr # by systemtap
 add_need nss # by systemtap
 add_need dwz # by debhelper
+add_need fakeroot # by sbuild
+
+patch_fakeroot() {
+	if test "$HOST_ARCH" = riscv32; then
+		echo "patching fakeroot to support riscv32"
+		drop_privs patch -p1  <<'EOF'
+Index: fakeroot-1.37.1.1/configure.ac
+===================================================================
+--- fakeroot-1.37.1.1.orig/configure.ac
++++ fakeroot-1.37.1.1/configure.ac
+@@ -390,7 +390,15 @@ dnl  Digital Unix: stat
+ time64_hack=no
+ AH_TEMPLATE([TIME64_HACK], [time64 shuffle])
+ AC_MSG_CHECKING([if we need to cope with time64])
+-AC_EGREP_CPP([time64],[
++
++AC_EGREP_CPP([YES_RISCV32], [
++#if defined(__riscv) && (__riscv_xlen == 32)
++  YES_RISCV32
++#endif
++], [
++    AC_MSG_RESULT([no (riscv32 is native 64-bit time)])
++], [
++    AC_EGREP_CPP([time64],[
+ #include <bits/wordsize.h>
+ #if __WORDSIZE == 32
+ #define __USE_TIME_BITS64 1
+@@ -404,6 +412,7 @@ NO
+ time64_hack=yes
+ ],
+        [AC_MSG_RESULT([no]);])
++])
+ 
+ :>fakerootconfig.h.tmp
+ 
+@@ -428,6 +437,20 @@ for SEARCH in %stat f%stat l%stat f%stat
+   FUNC=`echo $SEARCH|sed -e 's/.*%//'`
+   PRE=`echo $SEARCH|sed -e 's/%.*//'`
+   FOUND=
++
++  is_riscv32=no
++  AC_EGREP_CPP([YES_RISCV32], [#if defined(__riscv) && (__riscv_xlen == 32)
++    YES_RISCV32
++  #endif], [is_riscv32=yes])
++
++  if test "x$is_riscv32" = "xyes"; then
++    case "$FUNC" in
++      *64)
++        AC_MSG_NOTICE([riscv32: skipping 64-bit suffixed symbol $FUNC])
++        continue ;;
++    esac
++  fi
++
+   for WRAPPED in __${PRE}x${FUNC} _${PRE}x${FUNC} __${PRE}${FUNC}13 ${PRE}${FUNC} __${PRE}${FUNC}; do
+     AC_CHECK_FUNCS($WRAPPED,FOUND=$WRAPPED)
+ dnl
+Index: fakeroot-1.37.1.1/communicate.h
+===================================================================
+--- fakeroot-1.37.1.1.orig/communicate.h
++++ fakeroot-1.37.1.1/communicate.h
+@@ -63,7 +63,13 @@
+ #endif
+ 
+ /* Then decide whether we do or do not use the stat64 support */
+-#if defined HAVE_APPLE_STAT64 \
++/* Added riscv32 check: riscv32 uses 64-bit offsets and time by default, 
++   so we don't need the legacy stat64 "support" structures. */
++#if defined(__riscv) && (__riscv_xlen == 32)
++  /* riscv32 handles everything via standard stat, so we treat it as no-extra-support needed */
++# undef STAT64_SUPPORT
++/* Then decide whether we do or do not use the stat64 support */
++#elif defined HAVE_APPLE_STAT64 \
+ 	|| (defined(sun) && !defined(__SunOS_5_5_1) && !defined(_LP64)) \
+ 	|| (!defined __UCLIBC__ && (__GLIBC__ > 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 1))) \
+ 	|| (defined __UCLIBC__ && defined __UCLIBC_HAS_LFS__)
+Index: fakeroot-1.37.1.1/libfakeroot.c
+===================================================================
+--- fakeroot-1.37.1.1.orig/libfakeroot.c
++++ fakeroot-1.37.1.1/libfakeroot.c
+@@ -88,12 +88,14 @@
+ #define SEND_STAT64(a,b,c) send_stat64(a,b,c)
+ #define SEND_GET_STAT(a,b) send_get_stat(a,b)
+ #define SEND_GET_STAT64(a,b) send_get_stat64(a,b)
++#define SEND_GET_XATTR(a,b,c) send_get_xattr(a,b,c)
+ #define SEND_GET_XATTR64(a,b,c) send_get_xattr64(a,b,c)
+ #else
+ #define SEND_STAT(a,b,c) send_stat(a,b)
+ #define SEND_STAT64(a,b,c) send_stat64(a,b)
+ #define SEND_GET_STAT(a,b) send_get_stat(a)
+ #define SEND_GET_STAT64(a,b) send_get_stat64(a)
++#define SEND_GET_XATTR(a,b,c) send_get_xattr(a,b)
+ #define SEND_GET_XATTR64(a,b,c) send_get_xattr64(a,b)
+ #endif
+ 
+Index: fakeroot-1.37.1.1/libfakeroot_time64_entry.c
+===================================================================
+--- fakeroot-1.37.1.1.orig/libfakeroot_time64_entry.c
++++ fakeroot-1.37.1.1/libfakeroot_time64_entry.c
+@@ -65,7 +65,8 @@
+     }
+   #endif
+ 
+-
++/* Skip legacy stat64 symbol definitions for riscv32 as it is natively 64-bit safe */
++#if !(defined(__riscv) && (__riscv_xlen == 32))
+     #ifndef NO_WRAP_LSTAT64_SYMBOL
+     extern int WRAP_LSTAT64 LSTAT64_ARG (int ver, const char *file_name, void *st);
+ 
+@@ -99,4 +100,4 @@
+ 	 return WRAP_FSTATAT64 FSTATAT64_ARG(_STAT_VER, dir_fd, path, st, flags);
+       }
+     #endif
+-
++#endif
+EOF
+	fi
+}
 
 automatically_cross_build_packages() {
 	local dosetmp profiles buildable new_needed line pkg missing source
