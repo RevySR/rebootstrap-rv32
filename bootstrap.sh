@@ -233,6 +233,9 @@ csky		csky		csky		32	little
 riscv32		riscv32		riscv32		32	little
 EOF
 
+# for new arch / use time64
+sed -i 's/powerpcspe/riscv32/' /usr/share/perl5/Dpkg/Vendor/Debian.pm
+
 if test -z "$HOST_ARCH" || ! dpkg-architecture "-a$HOST_ARCH"; then
 	echo "architecture $HOST_ARCH unknown to dpkg"
 	exit 1
